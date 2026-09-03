@@ -1,32 +1,38 @@
-.route-diagram { min-height: 520px; position: relative; overflow: auto; background-color: var(--surface-0); background-image: linear-gradient(rgba(var(--green-rgb),.035) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--green-rgb),.035) 1px, transparent 1px); background-size: 24px 24px; border: 1px solid var(--line); }
-.route-diagram::before { content: "SYNTHESIS MAP // FORWARD ORIENTATION"; position: sticky; top: 0; left: 0; z-index: 2; display: block; width: max-content; padding: 7px 10px; color: var(--faint); background: var(--surface-0); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 8px; letter-spacing: .14em; }
-.direction-label { position: absolute; left: 18px; top: 56px; bottom: 24px; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--faint); font-size: 8px; letter-spacing: .12em; writing-mode: vertical-rl; }
+.route-diagram {
+  position: relative;
+  min-height: 420px;
+  overflow: auto;
+  border-block: 1px solid var(--line);
+  background-color: var(--surface-0);
+  background-image: linear-gradient(rgba(var(--green-rgb), .025) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--green-rgb), .025) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.route-diagram::before { content: "SYNTHESIS SCHEME // FORWARD"; position: sticky; top: 0; left: 0; z-index: 2; display: block; width: max-content; padding: 6px 9px; color: var(--faint); background: var(--surface-0); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 8px; letter-spacing: .14em; }
+.direction-label { position: absolute; left: 14px; top: 48px; bottom: 18px; display: flex; flex-direction: column; align-items: center; gap: 7px; color: var(--faint); font-size: 7px; letter-spacing: .12em; writing-mode: vertical-rl; }
 .direction-label i { flex: 1; width: 1px; background: linear-gradient(var(--green-500), var(--rust-400)); }
-.route-scroll { min-width: max-content; min-height: 520px; padding: 34px 70px 54px 92px; display: flex; justify-content: center; align-items: flex-start; }
-.route-branch { min-width: 230px; position: relative; display: flex; flex-direction: column; align-items: center; }
-.precursor-row { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 34px; }
-.precursor-row.joined::after { content: ""; position: absolute; bottom: -16px; left: 115px; right: 115px; height: 1px; background: var(--green-500); }
-.synthesis-line { width: 1px; height: 32px; background: var(--green-500); }
-.synthesis-arrow { height: 37px; display: flex; align-items: center; color: var(--green-300); font-size: 17px; }
-.reaction-bar { width: 188px; min-height: 58px; padding: 8px 12px; cursor: pointer; text-align: center; color: var(--text); background: var(--surface-2); border: 1px solid var(--rust-500); box-shadow: 3px 3px 0 var(--surface-0); }
-.reaction-bar::before { content: "RXN::"; color: var(--rust-300); font-size: 8px; }
-.reaction-bar:hover { background: var(--surface-3); border-color: var(--rust-300); }
-.reaction-bar.computational { border-style: dashed; border-color: var(--rust-300); }
-.reaction-bar.computational::before { content: "MODEL::"; }
-.reaction-bar span, .reaction-bar b, .reaction-bar small { display: block; white-space: normal; writing-mode: horizontal-tb; transform: none; }
-.reaction-bar span { color: var(--text); font: 600 10px var(--font-mono); }
-.reaction-bar b { margin: 4px 0; color: var(--rust-300); font-size: 8px; font-weight: 500; text-transform: uppercase; }
-.reaction-bar small { color: var(--muted); font-size: 8px; }
-.compound-card { width: 230px; min-height: 218px; display: flex; flex-direction: column; align-items: stretch; padding: 0; overflow: hidden; cursor: pointer; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-strong); box-shadow: 5px 5px 0 var(--surface-0); text-align: left; writing-mode: horizontal-tb; transform: none; }
-.compound-card:hover { background: var(--surface-3); border-color: var(--green-300); transform: translateY(-1px); }
-.compound-card.stock { border-top: 3px solid var(--green-400); }
-.compound-card.unresolved { border-top: 3px dashed var(--rust-400); }
-.target-branch > .compound-card { border-top: 3px solid var(--rust-400); }
-.compound-depiction { height: 148px; padding: 8px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); border-bottom: 1px solid var(--line); }
-.compound-depiction img { width: 100%; height: 100%; object-fit: contain; filter: sepia(.08) saturate(.7) brightness(.92); }
-.compound-copy { min-height: 70px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; background: var(--surface-1); }
-.compound-copy strong { color: var(--text); font: 400 15px var(--font-display); white-space: normal; writing-mode: horizontal-tb; transform: none; }
-.compound-copy code { overflow: hidden; color: var(--text-soft); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.compound-copy small { color: var(--green-300); font-size: 8px; letter-spacing: .13em; text-transform: uppercase; }
-.compound-card.unresolved .compound-copy small { color: var(--rust-300); }
-@media (max-width: 720px) { .route-scroll { justify-content: flex-start; padding-left: 64px; }.direction-label { left: 10px; } }
+.route-scroll { min-width: max-content; min-height: 420px; padding: 28px 44px 42px 58px; display: flex; justify-content: center; align-items: flex-start; }
+.route-branch { position: relative; min-width: 132px; display: flex; flex-direction: column; align-items: center; }
+.precursor-row { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 12px; }
+.precursor-row.joined::after { content: ""; position: absolute; bottom: -12px; left: 66px; right: 66px; height: 1px; background: var(--green-500); }
+.synthesis-line { width: 1px; height: 24px; background: var(--green-500); }
+.synthesis-arrow { width: 1px; height: 25px; position: relative; background: var(--green-500); }
+.synthesis-arrow::after { content: ""; position: absolute; left: -3px; bottom: 0; border: 4px solid transparent; border-top: 6px solid var(--green-300); border-bottom: 0; }
+.reaction-bar { max-width: 164px; padding: 3px 7px 4px; cursor: pointer; color: var(--muted); background: var(--surface-0); border: 0; border-block: 1px solid var(--rust-500); text-align: center; }
+.reaction-bar:hover { color: var(--text); border-color: var(--rust-300); }
+.reaction-bar.computational { border-block-style: dashed; }
+.reaction-bar span, .reaction-bar b, .reaction-bar small { display: block; writing-mode: horizontal-tb; transform: none; }
+.reaction-bar span { max-width: 150px; overflow: hidden; color: var(--text-soft); font: 600 8px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.reaction-bar b { margin: 2px 0; color: var(--rust-300); font-size: 7px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.reaction-bar small { font-size: 7px; }
+.compound-label { width: 132px; padding: 3px 4px 6px; cursor: pointer; color: var(--text); background: transparent; border: 0; text-align: center; }
+.compound-label:hover .compound-name { color: var(--green-300); }
+.compound-depiction { width: 124px; height: 88px; display: flex; align-items: center; justify-content: center; }
+.compound-depiction img { width: 100%; height: 100%; object-fit: contain; }
+.compound-name { display: block; overflow: hidden; color: var(--text); font: 400 11px/1.25 var(--font-display); text-overflow: ellipsis; white-space: nowrap; }
+.compound-smiles { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+.compound-state { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--green-300); font-size: 6px; letter-spacing: .12em; text-transform: uppercase; }
+.compound-state::before { content: ""; width: 4px; height: 4px; background: currentColor; }
+.compound-label.unresolved .compound-state { color: var(--rust-300); }
+.target-branch > .compound-label .compound-name { color: var(--rust-300); font-weight: 600; }
+.target-branch > .compound-label { border-bottom: 1px solid var(--rust-500); }
+@media (max-width: 720px) { .route-scroll { justify-content: flex-start; padding-left: 44px; } .direction-label { left: 7px; } }
