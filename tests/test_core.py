@@ -1,3 +1,5 @@
+import time
+
 from opencook.chemistry import MoleculeError, normalize
 from opencook.domain import EvidenceClass, Provenance, Reaction
 from opencook.expansion import ExpansionProvider
@@ -126,6 +128,12 @@ class FakeExpansionProvider(ExpansionProvider):
         return []
 
 
+class SlowExpansionProvider(FakeExpansionProvider):
+    def expand(self, product: str, limit: int) -> list[Reaction]:
+        time.sleep(0.02)
+        return super().expand(product, limit)
+
+
 def test_model_is_only_called_after_exact_ord_expansion_is_exhausted() -> None:
     store = ReactionStore()
     prov = (Provenance("ORD", "1", "exact", "ORD", "CC-BY-SA"),)
@@ -160,3 +168,23 @@ def test_model_fallback_can_be_disabled() -> None:
     assert routes == []
     assert model.calls == []
     assert stats.model_calls == 0
+
+
+def test_completed_model_expansion_is_visible_when_it_crosses_timeout() -> None:
+    model = SlowExpansionProvider()
+    routes, stats = BestFirstPlanner(ReactionStore(), SetStock(["CC"]), model).search(
+        "CCC",
+        SearchConfig(
+            model_fallback=True,
+            objective="deepest_supported",
+            timeout_seconds=0.01,
+            max_model_calls=1,
+            model_min_heavy_atoms=3,
+        ),
+    )
+
+    assert stats.termination == "timeout"
+    assert stats.model_reactions_generated == 1
+    generated = next(route for route in routes if route.signature == "model-bridge")
+    assert generated.root.reaction
+    assert generated.root.reaction.evidence is EvidenceClass.COMPUTATIONAL

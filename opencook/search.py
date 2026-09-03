@@ -173,7 +173,11 @@ class BestFirstPlanner:
         initial = () if root.in_stock and config.allow_target_as_stock else (((), (canonical,), 0),)
         queue = [_State(self._heuristic(root, initial, config.heuristic), next(counter), root, initial)]
         results: list[Route] = []
-        direct_candidates: dict[str, RouteNode] = {}
+        # Preserve explored partial states, including a model expansion that
+        # finishes just after the wall-clock budget. Otherwise the expensive
+        # generated disconnection is pushed onto the frontier and then silently
+        # lost when the next loop iteration observes the timeout.
+        partial_candidates: dict[str, RouteNode] = {}
         seen_signatures: set[str] = set()
         stats = SearchStats(molecules_discovered=1)
         expansion_cache: dict[str, list[Reaction]] = {}
@@ -296,8 +300,9 @@ class BestFirstPlanner:
                 selected.in_stock = False
                 selected.reaction = reaction
                 selected.precursors = [self._node(s) for s in precursor_smiles]
-                if not current_path:
-                    direct_candidates[reaction.id] = copy.deepcopy(new_root)
+                candidate_signature = _signature(new_root)
+                if candidate_signature and len(partial_candidates) < 2_000:
+                    partial_candidates[candidate_signature] = copy.deepcopy(new_root)
                 pending: list[tuple[tuple[int, ...], tuple[str, ...], int]] = []
                 for index, child in enumerate(selected.precursors):
                     if config.objective == "deepest_supported" or not child.in_stock:
@@ -315,10 +320,14 @@ class BestFirstPlanner:
         if config.objective == "deepest_supported":
             result_signatures = {route.signature for route in results}
             partials: list[Route] = []
-            for root_candidate in direct_candidates.values():
+            for root_candidate in partial_candidates.values():
                 metrics = _metrics(root_candidate)
                 signature = _signature(root_candidate)
-                if metrics.unresolved_leaves and signature not in result_signatures:
+                if not metrics.unresolved_leaves and signature not in result_signatures:
+                    results.append(Route(root_candidate, metrics, signature))
+                    result_signatures.add(signature)
+                    stats.complete_routes += 1
+                elif metrics.unresolved_leaves and signature not in result_signatures:
                     partials.append(Route(root_candidate, metrics, signature, complete=False))
             partials.sort(
                 key=lambda route: (

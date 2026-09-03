@@ -40,7 +40,9 @@ class SearchInput(MoleculeInput):
     planner: str = "andor_best_first"
     max_depth: int = Field(8, ge=1, le=30)
     max_expansions: int = Field(10_000, ge=1, le=1_000_000)
-    timeout_seconds: float = Field(30, gt=0, le=3600)
+    # A local CPU model expansion takes roughly 30-40 seconds. This allows ORD
+    # search plus several fallback calls while remaining cancelable.
+    timeout_seconds: float = Field(180, gt=0, le=3600)
     routes: int = Field(5, ge=1, le=50)
     heuristic: str = "complexity"
     objective: str = "deepest_supported"
