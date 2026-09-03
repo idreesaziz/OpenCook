@@ -1,0 +1,30 @@
+# Reaction data
+
+The bundled CC0 fixture exercises real parsing, reverse lookup, multistep search, convergency, route diversity, provenance, and cycles. It is not a chemistry benchmark.
+
+ORD is the primary supported open corpus. Current `ord-schema` releases read Protobuf and lazy Parquet and fetch published datasets from the official Hugging Face mirror. Install `uv sync --extra ord`, identify a dataset in the official `ord-data` catalog, then run:
+
+```bash
+uv run opencook data download ord_dataset-IDENTIFIER --output data/downloads
+```
+
+Downloaded datasets and generated indexes are ignored by Git. ORD data is CC-BY-SA; schema/tooling is Apache-2.0. Import metadata must retain dataset ID/version/source/license/import time and normalization version.
+
+USPTO/Lowe-derived datasets vary in redistribution status and processing provenance. They require a distinct adapter and explicit license record; OpenCook never silently merges them with ORD. Proprietary sources (Pistachio, Reaxys, CAS, ELNs) require user-supplied licensed adapters and credentials.
+
+## Starting-material catalogs
+
+Stock is stored separately in `data/stock.sqlite`. It is a versioned collection
+of availability assertions, not a list embedded in source code. SMILES,
+whitespace-delimited, CSV, TSV, and gzip-compressed exports are streamed with:
+
+```console
+opencook stock import catalog.smi.gz --source ZINC --version 2021-03
+opencook stock status
+```
+
+Every assertion retains its source, catalog identifier, and profile. Use
+`building_blocks` only for a source explicitly representing usable starting
+materials; broader purchasable or make-on-demand exports belong to
+`commercial_catalog`. Reaction reactants are never assumed available merely
+because they occur in an experimental record.

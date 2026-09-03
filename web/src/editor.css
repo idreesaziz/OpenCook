@@ -1,0 +1,17 @@
+.editor { position: relative; overflow: hidden; background: var(--surface-1); border: 1px solid var(--line-strong); box-shadow: 7px 7px 0 var(--surface-0); }
+.editor::after { content: "STRUCTURE BUFFER / 2D"; position: absolute; right: 12px; bottom: 52px; pointer-events: none; color: var(--faint); font-size: 8px; letter-spacing: .13em; }
+.editor-head { display: flex; justify-content: space-between; padding: 10px 13px; color: var(--green-300); background: var(--surface-0); border-bottom: 1px solid var(--line); font-size: 9px; letter-spacing: .14em; }
+.editor-head::before { content: "●"; margin-right: 8px; color: var(--rust-400); }
+.editor-head span { margin-left: auto; color: var(--faint); }
+.ketcher { height: 390px; padding: 3px; background: var(--surface-2); filter: saturate(.55) sepia(.08); }
+.ketcher > div { height: 100%; }
+.smiles-row { display: grid; grid-template-columns: 135px 1fr; align-items: center; padding: 9px 13px; background: var(--surface-0); border-top: 1px solid var(--line); }
+.smiles-row label { color: var(--green-300); font-size: 9px; letter-spacing: .1em; }
+.smiles-row label::before { content: "> "; color: var(--rust-400); }
+.smiles-row input { min-width: 0; padding: 9px; color: var(--text); background: var(--background); border: 1px solid var(--line); font-family: var(--font-mono); }
+.smiles-row input:focus { border-color: var(--green-400); }
+.editor-tools { display: flex; gap: 2px; padding: 7px; background: var(--surface-0); border-top: 1px solid var(--line); }
+.editor-tools button { padding: 7px 10px; cursor: pointer; color: var(--muted); background: transparent; border: 1px solid transparent; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.editor-tools button::before { content: "["; color: var(--faint); }.editor-tools button::after { content: "]"; color: var(--faint); }
+.editor-tools button:hover { color: var(--text); background: var(--surface-2); border-color: var(--line); }
+@media (max-width: 720px) { .ketcher { height: 330px; }.smiles-row { grid-template-columns: 1fr; gap: 6px; }.editor-tools { flex-wrap: wrap; } }

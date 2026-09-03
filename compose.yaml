@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    volumes: ["./data:/app/data"]
+  postgres:
+    image: informaticsmatters/rdkit-cartridge-debian:Release_2025_03
+    profiles: ["full"]
+    environment:
+      POSTGRES_DB: opencook
+      POSTGRES_USER: opencook
+      POSTGRES_PASSWORD: local-development-only
+    volumes: ["opencook-pg:/var/lib/postgresql/data"]
+volumes:
+  opencook-pg:
