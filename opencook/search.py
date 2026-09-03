@@ -9,6 +9,7 @@ from typing import Protocol, cast
 
 from .chemistry import normalize
 from .domain import EvidenceClass, Reaction, Route, RouteMetrics, RouteNode
+from .expansion import ExpansionProvider, NoExpansionProvider
 from .stock import StockProvider
 from .store import ReactionStore
 
@@ -30,6 +31,10 @@ class SearchConfig:
     objective: str = "best_overall"
     heuristic: str = "complexity"
     allow_target_as_stock: bool = False
+    model_fallback: bool = False
+    model_candidate_limit: int = 5
+    max_model_calls: int = 25
+    model_min_heavy_atoms: int = 6
 
 
 @dataclass(slots=True)
@@ -41,6 +46,9 @@ class SearchStats:
     frontier_size: int = 0
     complete_routes: int = 0
     termination: str = "complete"
+    model_calls: int = 0
+    model_reactions_generated: int = 0
+    model_failures: int = 0
 
 
 ProgressCallback = Callable[[dict[str, object]], None]
@@ -115,8 +123,14 @@ class BestFirstPlanner:
 
     name = "andor_best_first"
 
-    def __init__(self, store: ReactionStore, stock: StockProvider) -> None:
+    def __init__(
+        self,
+        store: ReactionStore,
+        stock: StockProvider,
+        expansion_provider: ExpansionProvider | None = None,
+    ) -> None:
         self.store, self.stock = store, stock
+        self.expansion_provider = expansion_provider or NoExpansionProvider()
 
     def _node(self, smiles: str) -> RouteNode:
         in_stock = self.stock.contains(smiles)
@@ -185,6 +199,9 @@ class BestFirstPlanner:
                 "deepest_complete_route": max(
                     (route.metrics.longest_linear_sequence for route in results), default=0
                 ),
+                "model_calls": stats.model_calls,
+                "model_reactions_generated": stats.model_reactions_generated,
+                "model_failures": stats.model_failures,
             })
 
         report("initializing retrosynthetic search", canonical, force=True)
@@ -231,6 +248,35 @@ class BestFirstPlanner:
                 continue
             if current.molecule not in expansion_cache:
                 expansion_cache[current.molecule] = self.store.reactions_producing(current.molecule)
+                if (
+                    not expansion_cache[current.molecule]
+                    and config.model_fallback
+                    and self.expansion_provider.name != "disabled"
+                    and stats.model_calls < config.max_model_calls
+                    and normalize(current.molecule).heavy_atoms >= config.model_min_heavy_atoms
+                ):
+                    report(
+                        "ORD exhausted; generating model disconnections",
+                        current.molecule,
+                        depth,
+                        force=True,
+                    )
+                    stats.model_calls += 1
+                    try:
+                        generated = self.expansion_provider.expand(
+                            current.molecule, config.model_candidate_limit
+                        )
+                    except Exception:
+                        stats.model_failures += 1
+                        generated = []
+                        report(
+                            "model expansion failed; preserving unresolved leaf",
+                            current.molecule,
+                            depth,
+                            force=True,
+                        )
+                    expansion_cache[current.molecule] = generated
+                    stats.model_reactions_generated += len(generated)
                 unique_reactions.update(reaction.id for reaction in expansion_cache[current.molecule])
             reactions = expansion_cache[current.molecule]
             stats.molecules_expanded += 1

@@ -164,6 +164,11 @@ export function App() {
                       {job.stats.elapsed_seconds.toFixed(3)} seconds
                     </small>
                     <small>termination: {job.stats.termination}</small>
+                    {job.stats.model_calls > 0 ? (
+                      <small>
+                        model: {job.stats.model_calls} calls / {job.stats.model_reactions_generated} proposals
+                      </small>
+                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -185,6 +190,8 @@ export function App() {
                     <span>frontier <strong>{job.progress?.frontier_size ?? 0}</strong></span>
                     <span>routes <strong>{job.progress?.complete_routes_discovered ?? 0}</strong></span>
                     <span>deepest <strong>{job.progress?.deepest_complete_route ?? 0}</strong></span>
+                    <span>model calls <strong>{job.progress?.model_calls ?? 0}</strong></span>
+                    <span>proposals <strong>{job.progress?.model_reactions_generated ?? 0}</strong></span>
                     <span>{(job.progress?.elapsed_seconds ?? 0).toFixed(1)} s</span>
                   </div>
                 </div>

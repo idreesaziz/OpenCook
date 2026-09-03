@@ -9,7 +9,7 @@ import typer
 
 from . import __version__
 from .chemistry import normalize
-from .runtime import demo_runtime
+from .runtime import demo_runtime, model_runtime
 from .search import BestFirstPlanner, BreadthFirstPlanner, SearchConfig
 from .stock import SQLiteStock, import_stock
 from .store import ReactionStore, load_fixture
@@ -125,11 +125,15 @@ def search(
     planner: str = "andor_best_first",
     routes: int = 5,
     max_depth: int = 8,
+    model_fallback: bool = typer.Option(False, "--model-fallback"),
     json_output: bool = typer.Option(False, "--json"),
 ) -> None:
     store, stock = demo_runtime()
     cls = BreadthFirstPlanner if planner == "breadth_first_baseline" else BestFirstPlanner
-    found, stats = cls(store, stock).search(target, SearchConfig(routes=routes, max_depth=max_depth))
+    found, stats = cls(store, stock, model_runtime()).search(
+        target,
+        SearchConfig(routes=routes, max_depth=max_depth, model_fallback=model_fallback),
+    )
     result = {
         "target": asdict(normalize(target)),
         "planner": cls.name,

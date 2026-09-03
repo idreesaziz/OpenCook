@@ -62,6 +62,9 @@ export type SearchResult = {
     frontier_size: number;
     complete_routes: number;
     termination: string;
+    model_calls: number;
+    model_reactions_generated: number;
+    model_failures: number;
   };
   progress?: {
     stage: string;
@@ -74,6 +77,9 @@ export type SearchResult = {
     frontier_size: number;
     complete_routes_discovered: number;
     deepest_complete_route: number;
+    model_calls: number;
+    model_reactions_generated: number;
+    model_failures: number;
   };
   message?: string;
   error?: string;
@@ -84,4 +90,6 @@ export type Health = {
   corpus_mode: "fixture_only" | "imported";
   stock_version: string;
   stock_molecules: number;
+  model_provider: string;
+  model_version: string;
 };

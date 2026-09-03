@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from . import __version__
 from .chemistry import MoleculeError, depict_svg, normalize
 from .names import PubChemNameProvider
-from .runtime import ROOT, demo_runtime
+from .runtime import ROOT, demo_runtime, model_runtime
 from .search import BestFirstPlanner, BreadthFirstPlanner, SearchConfig
 
 app = FastAPI(
@@ -26,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 store, stock = demo_runtime()
+model_provider = model_runtime()
 name_provider = PubChemNameProvider(ROOT / "data" / "cache" / "chemical-names.sqlite")
 jobs: dict[str, dict[str, Any]] = {}
 
@@ -43,6 +44,10 @@ class SearchInput(MoleculeInput):
     routes: int = Field(5, ge=1, le=50)
     heuristic: str = "complexity"
     objective: str = "deepest_supported"
+    model_fallback: bool = True
+    model_candidate_limit: int = Field(5, ge=1, le=10)
+    max_model_calls: int = Field(25, ge=0, le=250)
+    model_min_heavy_atoms: int = Field(6, ge=1, le=100)
 
 
 @app.exception_handler(MoleculeError)
@@ -61,6 +66,8 @@ def health() -> dict[str, Any]:
         "stock_version": stock.version,
         "stock_molecules": stock.count(),
         "network_required": False,
+        "model_provider": model_provider.name,
+        "model_version": model_provider.version,
     }
 
 
@@ -118,11 +125,15 @@ def _run(job_id: str, body: SearchInput) -> None:
             routes=body.routes,
             heuristic=body.heuristic,
             objective=body.objective,
+            model_fallback=body.model_fallback,
+            model_candidate_limit=body.model_candidate_limit,
+            max_model_calls=body.max_model_calls,
+            model_min_heavy_atoms=body.model_min_heavy_atoms,
         )
         def progress(update: dict[str, object]) -> None:
             jobs[job_id]["progress"] = update
 
-        routes, stats = planner_cls(store, stock).search(
+        routes, stats = planner_cls(store, stock, model_provider).search(
             body.structure,
             config,
             progress=progress,

@@ -1,5 +1,30 @@
 # Search
 
+## ORD-first hybrid expansion
+
+For every selected molecule the planner queries the reverse ORD index first. Only when that exact lookup
+returns no producers may an enabled model provider generate precursor candidates. Each accepted candidate
+is labelled `computational_proposal`, includes model provenance, and receives an uncertainty penalty. Its
+generated precursors re-enter the same ORD-first loop.
+
+Model fallback is optional and local. OpenCook's Python 3.13 application environment does not depend on
+PyTorch. RetroChimera currently requires a compatible Python 3.11 environment on Windows, so it runs behind
+a persistent JSON-lines worker:
+
+```powershell
+uv venv .model-venv --python 3.11
+uv pip install --python .model-venv\Scripts\python.exe retrochimera==1.2.0 pytorch-lightning==2.2.2 "torchmetrics<0.11" "scipy<1.12" pandas
+$env:OPENCOOK_MODEL_PROVIDER = "retrochimera"
+$env:OPENCOOK_MODEL_PYTHON = ".model-venv\Scripts\python.exe"
+opencook serve
+```
+
+If inference fails, the search preserves the unresolved molecule and records a model failure. A configurable
+heavy-atom threshold prevents meaningless model expansion of tiny terminal materials.
+
+`structurally_valid_not_forward_verified` only means RDKit accepted the generated structures. It does not
+mean the reaction has experimental support or that a separate forward model reproduced the target.
+
 `BestFirstPlanner` searches partial AND/OR solution graphs. The frontier priority is accumulated reaction cost plus a replaceable remaining-cost estimate. The zero heuristic is the correctness baseline; the descriptor heuristic uses heavy-atom count only as a non-evidentiary estimate. Expansion results are cached by canonical molecule within a search.
 
 Canonical SMILES provide the transposition identity. Path-local ancestor sets reject cycles. They are intentionally path-local: a molecule reused in a distinct convergent branch is legal, while a dependency returning to an ancestor is not. Context-independent reaction lookups are cached; route costs are not globally memoized because shared intermediates can change context-sensitive material accounting.

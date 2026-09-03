@@ -2,6 +2,10 @@
 
 **An open-source search engine for chemical synthesis.**
 
+Search is evidence-first: OpenCook exhausts exact ORD producers at each unresolved molecule before an
+optional local RetroChimera model proposes a computational bridge. Model-generated transformations are
+never presented as experimental precedent.
+
 OpenCook searches indexed reaction records backward from a molecular target, constructs an AND/OR synthesis graph, terminates branches at configured stock, and returns connected, ranked routes with evidence and provenance. It is deterministic, local-first scientific software—not an LLM application.
 
 ![OpenCook application](docs/assets/screenshot.svg)
@@ -45,4 +49,3 @@ cd web && npm test && npm run build
 ```
 
 Source code is Apache-2.0. Dataset licenses remain separate; see [DATA_LICENSES.md](DATA_LICENSES.md).
-

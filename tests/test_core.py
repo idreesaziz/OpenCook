@@ -1,5 +1,6 @@
 from opencook.chemistry import MoleculeError, normalize
 from opencook.domain import EvidenceClass, Provenance, Reaction
+from opencook.expansion import ExpansionProvider
 from opencook.runtime import ROOT, demo_runtime
 from opencook.search import BestFirstPlanner, SearchConfig
 from opencook.stock import SetStock
@@ -103,3 +104,59 @@ def test_deep_search_returns_unresolved_direct_reaction_paths() -> None:
     assert {route.signature for route in routes} == {"solved", "partial"}
     unresolved = next(route for route in routes if not route.complete)
     assert unresolved.metrics.unresolved_leaves == 1
+
+
+class FakeExpansionProvider(ExpansionProvider):
+    name = "fake-model"
+    version = "test-1"
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def expand(self, product: str, limit: int) -> list[Reaction]:
+        self.calls.append(product)
+        prov = (Provenance("test model", "1", "rank-1", "local", "test"),)
+        if normalize(product).smiles == normalize("CCC").smiles:
+            return [
+                Reaction(
+                    "model-bridge", ("CC",), "CCC", EvidenceClass.COMPUTATIONAL,
+                    0.7, "structurally_valid_not_forward_verified", prov,
+                )
+            ][:limit]
+        return []
+
+
+def test_model_is_only_called_after_exact_ord_expansion_is_exhausted() -> None:
+    store = ReactionStore()
+    prov = (Provenance("ORD", "1", "exact", "ORD", "CC-BY-SA"),)
+    store.put_reaction(Reaction("exact", ("CCC",), "CCCC", EvidenceClass.EXACT, 1, "checked", prov))
+    model = FakeExpansionProvider()
+
+    routes, stats = BestFirstPlanner(store, SetStock(["CC"]), model).search(
+        "CCCC",
+        SearchConfig(
+            model_fallback=True,
+            objective="deepest_supported",
+            max_model_calls=5,
+            model_min_heavy_atoms=3,
+        ),
+    )
+
+    complete = next(route for route in routes if route.complete)
+    assert complete.signature == "exact|model-bridge"
+    assert model.calls == [normalize("CCC").smiles]
+    assert stats.model_calls == 1
+    assert stats.model_reactions_generated == 1
+    assert complete.root.reaction and complete.root.reaction.evidence is EvidenceClass.EXACT
+    assert complete.root.precursors[0].reaction
+    assert complete.root.precursors[0].reaction.evidence is EvidenceClass.COMPUTATIONAL
+
+
+def test_model_fallback_can_be_disabled() -> None:
+    model = FakeExpansionProvider()
+    routes, stats = BestFirstPlanner(ReactionStore(), SetStock(["CC"]), model).search(
+        "CCC", SearchConfig(model_fallback=False)
+    )
+    assert routes == []
+    assert model.calls == []
+    assert stats.model_calls == 0

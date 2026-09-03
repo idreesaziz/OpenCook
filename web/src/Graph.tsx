@@ -9,7 +9,8 @@ function MoleculeCard({ node, onSelect }: { node: RouteNode; onSelect: (value: R
 }
 
 function ReactionBar({ reaction, onSelect }: { reaction: Reaction; onSelect: (value: Reaction) => void }) {
-  return <button className="reaction-bar" onClick={() => onSelect(reaction)}><span>{reaction.id}</span><b>{reaction.evidence.replaceAll("_", " ")}</b><small>{Math.round(reaction.confidence * 100)}% confidence</small></button>;
+  const inferred = reaction.evidence === "computational_proposal";
+  return <button className={`reaction-bar ${inferred ? "computational" : ""}`} onClick={() => onSelect(reaction)}><span>{reaction.id}</span><b>{reaction.evidence.replaceAll("_", " ")}</b><small>{Math.round(reaction.confidence * 100)}% {inferred ? "model confidence" : "confidence"}</small></button>;
 }
 
 function Branch({ node, onSelect, target = false }: { node: RouteNode; onSelect: (value: RouteNode | Reaction) => void; target?: boolean }) {

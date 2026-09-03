@@ -11,6 +11,8 @@
 .reaction-bar { width: 188px; min-height: 58px; padding: 8px 12px; cursor: pointer; text-align: center; color: var(--text); background: var(--surface-2); border: 1px solid var(--rust-500); box-shadow: 3px 3px 0 var(--surface-0); }
 .reaction-bar::before { content: "RXN::"; color: var(--rust-300); font-size: 8px; }
 .reaction-bar:hover { background: var(--surface-3); border-color: var(--rust-300); }
+.reaction-bar.computational { border-style: dashed; border-color: var(--rust-300); }
+.reaction-bar.computational::before { content: "MODEL::"; }
 .reaction-bar span, .reaction-bar b, .reaction-bar small { display: block; white-space: normal; writing-mode: horizontal-tb; transform: none; }
 .reaction-bar span { color: var(--text); font: 600 10px var(--font-mono); }
 .reaction-bar b { margin: 4px 0; color: var(--rust-300); font-size: 8px; font-weight: 500; text-transform: uppercase; }
