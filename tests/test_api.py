@@ -6,6 +6,7 @@ os.environ["OPENCOOK_DATABASE"] = ":memory:"
 
 from fastapi.testclient import TestClient
 
+from opencook import api
 from opencook.api import app
 
 client = TestClient(app)
@@ -29,3 +30,21 @@ def test_end_to_end_api() -> None:
 def test_depiction_is_real_svg() -> None:
     response = client.post("/api/v1/molecules/depict", json={"structure": "c1ccccc1"})
     assert response.status_code == 200 and "<svg" in response.text
+
+
+def test_name_provider_failure_does_not_discard_routes(monkeypatch: object) -> None:
+    def fail(_structure: str) -> None:
+        raise TypeError("name service failure")
+
+    monkeypatch.setattr(api.name_provider, "lookup", fail)  # type: ignore[attr-defined]
+    routes = [
+        {
+            "root": {
+                "molecule": "CCO",
+                "precursors": [],
+                "display_name": None,
+            }
+        }
+    ]
+    api._enrich_names(routes)
+    assert routes[0]["root"]["display_name"] is None

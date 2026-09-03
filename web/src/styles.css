@@ -95,6 +95,13 @@ main { min-height: calc(100vh - var(--header-height)); }
 .primary:hover { background: var(--rust-400); transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--surface-3); }
 .primary span { margin-left: 20px; }
 .error { color: var(--danger); }
+.search-error {
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  font-family: var(--font-mono);
+}
 .results { max-width: 1600px; margin: 0 auto; padding: 0 28px 36px; }
 .notice { padding: var(--space-4); color: var(--muted); background: var(--surface-0); border: 1px solid var(--line); }
 .notice::before { content: "NOTICE // "; color: var(--rust-300); }

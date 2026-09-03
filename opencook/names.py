@@ -36,6 +36,10 @@ class PubChemNameProvider:
 
     def lookup(self, structure: str) -> ChemicalName | None:
         molecule = normalize(structure)
+        # RDKit can return no InChIKey for structures outside InChI's supported
+        # domain. Naming is optional metadata, so these must not fail a search.
+        if not molecule.inchikey:
+            return None
         with self.lock:
             row = self.db.execute(
                 "SELECT payload FROM chemical_name WHERE inchikey=?", (molecule.inchikey,)
@@ -46,7 +50,7 @@ class PubChemNameProvider:
             return None
         url = (
             "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchikey/"
-            f"{quote(molecule.inchikey)}/property/Title,IUPACName/JSON"
+            f"{quote(str(molecule.inchikey))}/property/Title,IUPACName/JSON"
         )
         try:
             response = httpx.get(url, timeout=4.0, headers={"User-Agent": "OpenCook/0.1"})

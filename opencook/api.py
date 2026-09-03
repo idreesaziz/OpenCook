@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -29,6 +30,7 @@ store, stock = demo_runtime()
 model_provider = model_runtime()
 name_provider = PubChemNameProvider(ROOT / "data" / "cache" / "chemical-names.sqlite")
 jobs: dict[str, dict[str, Any]] = {}
+logger = logging.getLogger(__name__)
 
 
 class MoleculeInput(BaseModel):
@@ -106,9 +108,19 @@ def _enrich_names(routes: list[dict[str, Any]]) -> None:
 
     for route in routes:
         collect(route["root"])
-    structures = sorted({node["molecule"] for node in nodes})
+    # Preserve route order so targets and the highest-ranked precursors receive
+    # names first. Remote naming is auxiliary and must not add minutes after a
+    # completed chemistry search.
+    structures = list(dict.fromkeys(node["molecule"] for node in nodes))[:24]
+    def safe_lookup(structure: str) -> Any:
+        try:
+            return name_provider.lookup(structure)
+        except Exception:
+            logger.exception("Chemical-name lookup failed", extra={"structure": structure})
+            return None
+
     with ThreadPoolExecutor(max_workers=4) as pool:
-        names = dict(zip(structures, pool.map(name_provider.lookup, structures), strict=True))
+        names = dict(zip(structures, pool.map(safe_lookup, structures), strict=True))
     for node in nodes:
         name = names[node["molecule"]]
         if name:
@@ -167,6 +179,7 @@ def _run(job_id: str, body: SearchInput) -> None:
             ),
         )
     except Exception as exc:
+        logger.exception("Search job %s failed", job_id)
         jobs[job_id].update(status="failed", error=str(exc))
 
 

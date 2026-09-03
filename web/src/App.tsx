@@ -198,6 +198,11 @@ export function App() {
                 <button className="cancel-search" onClick={cancel}>[ CANCEL SEARCH ]</button>
               </div>
             ) : null}
+            {job.status === "failed" ? (
+              <p className="error search-error">
+                Search failed: {job.error ?? "Unknown backend error"}
+              </p>
+            ) : null}
             {job.message ? <p className="notice">{job.message}</p> : null}
             {routes.length ? (
               <>

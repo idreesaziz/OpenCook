@@ -337,7 +337,10 @@ class BestFirstPlanner:
                     route.signature,
                 )
             )
-            results.extend(partials)
+            # Search may explore thousands of partial states. Return a useful,
+            # ranked window rather than making serialization and optional name
+            # enrichment scale with the entire frontier.
+            results.extend(partials[: max(config.routes * 2, 10)])
         report(f"search {stats.termination}", force=True)
         return results, stats
 
