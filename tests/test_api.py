@@ -48,3 +48,26 @@ def test_name_provider_failure_does_not_discard_routes(monkeypatch: object) -> N
     ]
     api._enrich_names(routes)
     assert routes[0]["root"]["display_name"] is None
+
+
+def test_name_enrichment_limit_leaves_additional_nodes_unnamed(monkeypatch: object) -> None:
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        api.name_provider, "lookup", lambda _structure: None
+    )
+    children = [
+        {"molecule": "C" * size, "precursors": [], "display_name": None}
+        for size in range(1, 30)
+    ]
+    routes = [
+        {
+            "root": {
+                "molecule": "O",
+                "precursors": children,
+                "display_name": None,
+            }
+        }
+    ]
+
+    api._enrich_names(routes)
+
+    assert all(node["display_name"] is None for node in children)

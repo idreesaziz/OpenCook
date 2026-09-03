@@ -122,7 +122,7 @@ def _enrich_names(routes: list[dict[str, Any]]) -> None:
     with ThreadPoolExecutor(max_workers=4) as pool:
         names = dict(zip(structures, pool.map(safe_lookup, structures), strict=True))
     for node in nodes:
-        name = names[node["molecule"]]
+        name = names.get(node["molecule"])
         if name:
             node["display_name"] = name.preferred_name
             node["name_record"] = asdict(name)
@@ -161,7 +161,11 @@ def _run(job_id: str, body: SearchInput) -> None:
             **jobs[job_id]["progress"],
             "stage": "resolving molecule names",
         }
-        _enrich_names(serialized_routes)
+        try:
+            _enrich_names(serialized_routes)
+        except Exception:
+            # Names are presentation metadata, never part of route validity.
+            logger.exception("Name enrichment failed for search job %s", job_id)
         jobs[job_id].update(
             status="completed",
             routes=serialized_routes,
