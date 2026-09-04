@@ -3,6 +3,7 @@ from __future__ import annotations
 import heapq
 import itertools
 import time
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol, cast
@@ -182,6 +183,7 @@ class BestFirstPlanner:
         stats = SearchStats(molecules_discovered=1)
         expansion_cache: dict[str, list[Reaction]] = {}
         unique_reactions: set[str] = set()
+        recent_reactions: deque[dict[str, object]] = deque(maxlen=8)
         last_progress = 0.0
 
         def report(stage: str, molecule: str | None = None, depth: int = 0, *, force: bool = False) -> None:
@@ -206,6 +208,7 @@ class BestFirstPlanner:
                 "model_calls": stats.model_calls,
                 "model_reactions_generated": stats.model_reactions_generated,
                 "model_failures": stats.model_failures,
+                "recent_reactions": list(recent_reactions),
             })
 
         report("initializing retrosynthetic search", canonical, force=True)
@@ -286,6 +289,16 @@ class BestFirstPlanner:
             stats.molecules_expanded += 1
             stats.reactions_examined = len(unique_reactions)
             candidates = reactions if not current_path else reactions[: config.candidate_limit]
+            for reaction in candidates[:3]:
+                recent_reactions.appendleft(
+                    {
+                        "id": reaction.id,
+                        "product": reaction.product,
+                        "reactants": list(reaction.reactants),
+                        "evidence": reaction.evidence.value,
+                        "depth": depth,
+                    }
+                )
             for reaction in candidates:
                 precursor_smiles = tuple(normalize(s).smiles for s in reaction.reactants)
                 if any(s in ancestors for s in precursor_smiles):
@@ -314,6 +327,7 @@ class BestFirstPlanner:
                 heapq.heappush(queue, _State(priority, next(counter), new_root, unresolved, cost))
                 stats.molecules_discovered += len(precursor_smiles)
             stats.frontier_size = len(queue)
+            report("assembling reaction graph", current.molecule, depth)
         stats.elapsed_seconds = round(time.monotonic() - started, 6)
         if config.objective != "deepest_supported":
             results.sort(key=lambda r: (r.metrics.total_score, r.signature))

@@ -207,6 +207,10 @@ def create_search(body: SearchInput) -> dict[str, str]:
             "frontier_size": 1,
             "complete_routes_discovered": 0,
             "deepest_complete_route": 0,
+            "model_calls": 0,
+            "model_reactions_generated": 0,
+            "model_failures": 0,
+            "recent_reactions": [],
         },
         "reproducibility": {
             "opencook_version": __version__,

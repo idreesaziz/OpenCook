@@ -80,6 +80,20 @@ export type SearchResult = {
     model_calls: number;
     model_reactions_generated: number;
     model_failures: number;
+    recent_reactions: Array<{
+      id: string;
+      product: string;
+      reactants: string[];
+      evidence: string;
+      depth: number;
+    }>;
+  };
+  configuration?: {
+    max_depth: number;
+    max_expansions: number;
+    timeout_seconds: number;
+    routes: number;
+    max_model_calls: number;
   };
   message?: string;
   error?: string;

@@ -23,6 +23,7 @@ def test_end_to_end_api() -> None:
         time.sleep(0.01)
     assert len(result["routes"]) >= 2
     assert result["progress"]["stage"] == "search complete"
+    assert result["progress"]["recent_reactions"]
     assert result["routes"][0]["root"]["reaction"]["provenance"]
     assert client.get("/api/v1/reactions/fixture-r1").status_code == 200
 

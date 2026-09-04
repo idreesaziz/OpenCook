@@ -6,6 +6,14 @@ import type { Health, Reaction, RouteNode, SearchResult } from "./types";
 
 const example = "CC(=O)OCCO";
 
+function ProgressGauge({ label, value, maximum, detail }: { label: string; value: number; maximum: number; detail: string }) {
+  const percent = maximum > 0 ? Math.min(100, (value / maximum) * 100) : 0;
+  return <div className="progress-gauge">
+    <div><span>{label}</span><code>{detail}</code></div>
+    <div className="gauge-track"><i style={{ width: `${percent}%` }} /></div>
+  </div>;
+}
+
 function stockLeaves(root: RouteNode): RouteNode[] {
   const leaves = new Map<string, RouteNode>();
   const visit = (node: RouteNode) => {
@@ -32,12 +40,17 @@ export function App() {
   const [selected, setSelected] = useState<RouteNode | Reaction | null>(null),
     [error, setError] = useState("");
   const [health, setHealth] = useState<Health | null>(null);
+  const [searchStartedAt, setSearchStartedAt] = useState(0);
+  const [liveNow, setLiveNow] = useState(0);
   useEffect(() => {
     void fetch("/api/v1/health")
       .then((response) => response.json())
       .then(setHealth);
   }, []);
   const run = async () => {
+    const startedAt = Date.now();
+    setSearchStartedAt(startedAt);
+    setLiveNow(startedAt);
     setBusy(true);
     setError("");
     setJob(null);
@@ -64,6 +77,11 @@ export function App() {
       setBusy(false);
     }
   };
+  useEffect(() => {
+    if (!busy) return;
+    const clock = setInterval(() => setLiveNow(Date.now()), 200);
+    return () => clearInterval(clock);
+  }, [busy]);
   useEffect(() => {
     if (!job || !["queued", "running"].includes(job.status)) return;
     const timer = setInterval(async () => {
@@ -182,7 +200,14 @@ export function App() {
                   <div className="trace-label"><span>RETRO // TRACE</span><em>LIVE</em></div>
                   <b>&gt; {job.progress?.stage ?? "Starting search"}</b>
                   <code>{job.progress?.current_molecule}</code>
-                  <div className="trace-bar"><span /></div>
+                  <div className="progress-grid">
+                    <ProgressGauge label="TIME BUDGET" value={(liveNow - searchStartedAt) / 1000} maximum={job.configuration?.timeout_seconds ?? 180} detail={`${((liveNow - searchStartedAt) / 1000).toFixed(1)} / ${job.configuration?.timeout_seconds ?? 180}s`} />
+                    <ProgressGauge label="GRAPH EXPANSIONS" value={job.progress?.molecules_expanded ?? 0} maximum={job.configuration?.max_expansions ?? 10000} detail={`${job.progress?.molecules_expanded ?? 0} / ${job.configuration?.max_expansions ?? 10000}`} />
+                    <ProgressGauge label="SEARCH DEPTH" value={job.progress?.deepest_complete_route ?? job.progress?.current_depth ?? 0} maximum={job.configuration?.max_depth ?? 8} detail={`${job.progress?.deepest_complete_route ?? job.progress?.current_depth ?? 0} / ${job.configuration?.max_depth ?? 8}`} />
+                    <ProgressGauge label="ROUTE RECOVERY" value={job.progress?.complete_routes_discovered ?? 0} maximum={job.configuration?.routes ?? 5} detail={`${job.progress?.complete_routes_discovered ?? 0} / ${job.configuration?.routes ?? 5}`} />
+                    <ProgressGauge label="MODEL FALLBACK" value={job.progress?.model_calls ?? 0} maximum={job.configuration?.max_model_calls ?? 25} detail={`${job.progress?.model_calls ?? 0} calls · ${job.progress?.model_reactions_generated ?? 0} proposals`} />
+                    <ProgressGauge label="FRONTIER LOAD" value={job.progress?.frontier_size ?? 0} maximum={Math.max(job.progress?.molecules_discovered ?? 1, 1)} detail={`${job.progress?.frontier_size ?? 0} queued`} />
+                  </div>
                   <div className="progress-metrics">
                     <span>depth <strong>{job.progress?.current_depth ?? 0}</strong></span>
                     <span>expanded <strong>{job.progress?.molecules_expanded ?? 0}</strong></span>
@@ -193,6 +218,16 @@ export function App() {
                     <span>model calls <strong>{job.progress?.model_calls ?? 0}</strong></span>
                     <span>proposals <strong>{job.progress?.model_reactions_generated ?? 0}</strong></span>
                     <span>{(job.progress?.elapsed_seconds ?? 0).toFixed(1)} s</span>
+                  </div>
+                  <div className="assembly-feed">
+                    <div className="trace-label"><span>GRAPH ASSEMBLY // ACCEPTED DISCONNECTIONS</span></div>
+                    {(job.progress?.recent_reactions ?? []).length ? job.progress?.recent_reactions.map((reaction) => (
+                      <div className="assembly-line" key={`${reaction.id}-${reaction.depth}`}>
+                        <em>{reaction.evidence === "computational_proposal" ? "MODEL" : "ORD"}</em>
+                        <code>{reaction.reactants.join(" + ")} → {reaction.product}</code>
+                        <small>d{reaction.depth} / {reaction.id}</small>
+                      </div>
+                    )) : <div className="assembly-empty">Awaiting first indexed transformation...</div>}
                   </div>
                 </div>
                 <button className="cancel-search" onClick={cancel}>[ CANCEL SEARCH ]</button>
