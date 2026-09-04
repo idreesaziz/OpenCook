@@ -33,7 +33,7 @@ class AvailabilityGateway:
         self.transport = transport
 
     def health(self) -> dict[str, Any]:
-        with httpx.Client(transport=self.transport, timeout=3) as client:
+        with httpx.Client(transport=self.transport, timeout=3, trust_env=False) as client:
             response = client.get(f"{self.base_url}/v1/health")
             response.raise_for_status()
             result: dict[str, Any] = response.json()
@@ -60,7 +60,7 @@ class AvailabilityGateway:
             "market": {"country": country.upper()},
             "supplied_urls": supplied_urls or [],
         }
-        with httpx.Client(transport=self.transport, timeout=30) as client:
+        with httpx.Client(transport=self.transport, timeout=30, trust_env=False) as client:
             response = client.post(f"{self.base_url}/v1/availability/check", json=payload)
             response.raise_for_status()
             result: dict[str, Any] = response.json()
