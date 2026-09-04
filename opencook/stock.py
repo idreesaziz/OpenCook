@@ -93,9 +93,12 @@ class SQLiteStock:
 
     def contains(self, smiles: str) -> bool:
         molecule_id, _ = canonical_identity(smiles)
-        return self.db.execute(
-            "SELECT 1 FROM stock_assertion WHERE molecule_id=? LIMIT 1", (molecule_id,)
-        ).fetchone() is not None
+        return (
+            self.db.execute(
+                "SELECT 1 FROM stock_assertion WHERE molecule_id=? LIMIT 1", (molecule_id,)
+            ).fetchone()
+            is not None
+        )
 
     def describe(self, smiles: str) -> tuple[str | None, tuple[str, ...]]:
         molecule_id, _ = canonical_identity(smiles)
@@ -184,13 +187,15 @@ def import_stock(
                 fields[id_column].strip() if id_column is not None and len(fields) > id_column else ""
             )
             name = (
-                fields[name_column].strip()
-                if name_column is not None and len(fields) > name_column
-                else None
+                fields[name_column].strip() if name_column is not None and len(fields) > name_column else None
             )
             if stock.add(
-                structure, source=source, catalog_id=catalog_id, name=name or None,
-                profile=profile, commit=False,
+                structure,
+                source=source,
+                catalog_id=catalog_id,
+                name=name or None,
+                profile=profile,
+                commit=False,
             ):
                 report["assertions_indexed"] += 1
             else:
@@ -205,17 +210,24 @@ def import_stock(
     stock.set_metadata("import_report", json.dumps(dict(report), sort_keys=True))
     stock.commit()
     return {
-        **dict(report), "records_rejected": sum(rejections.values()),
-        "rejection_reasons": dict(rejections), "molecules": stock.count(),
-        "assertions": stock.assertion_count(), "version": stock.version,
+        **dict(report),
+        "records_rejected": sum(rejections.values()),
+        "rejection_reasons": dict(rejections),
+        "molecules": stock.count(),
+        "assertions": stock.assertion_count(),
+        "version": stock.version,
     }
 
 
 class SetStock:
     """Small fixture provider retained for isolated tests."""
 
-    def __init__(self, smiles: list[str], version: str = "user",
-                 metadata: dict[str, tuple[str | None, tuple[str, ...]]] | None = None) -> None:
+    def __init__(
+        self,
+        smiles: list[str],
+        version: str = "user",
+        metadata: dict[str, tuple[str | None, tuple[str, ...]]] | None = None,
+    ) -> None:
         self.version = version
         self._ids = {canonical_identity(s)[0] for s in smiles}
         self._metadata = {

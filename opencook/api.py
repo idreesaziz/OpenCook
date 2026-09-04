@@ -112,6 +112,7 @@ def _enrich_names(routes: list[dict[str, Any]]) -> None:
     # names first. Remote naming is auxiliary and must not add minutes after a
     # completed chemistry search.
     structures = list(dict.fromkeys(node["molecule"] for node in nodes))[:24]
+
     def safe_lookup(structure: str) -> Any:
         try:
             return name_provider.lookup(structure)
@@ -144,6 +145,7 @@ def _run(job_id: str, body: SearchInput) -> None:
             max_model_calls=body.max_model_calls,
             model_min_heavy_atoms=body.model_min_heavy_atoms,
         )
+
         def progress(update: dict[str, object]) -> None:
             jobs[job_id]["progress"] = update
 

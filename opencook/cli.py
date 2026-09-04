@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 
 from . import __version__
+from .availability import AvailabilityGateway
 from .chemistry import normalize
 from .runtime import demo_runtime, model_runtime
 from .search import BestFirstPlanner, BreadthFirstPlanner, SearchConfig
@@ -102,9 +103,16 @@ def stock_import(
     if delimiter not in separators:
         raise typer.BadParameter("delimiter must be 'tab' or 'comma'")
     report = import_stock(
-        path, SQLiteStock(database), source=source, version=version, profile=profile,
-        delimiter=separators[delimiter], smiles_column=smiles_column,
-        id_column=id_column, name_column=name_column, skip_header=skip_header,
+        path,
+        SQLiteStock(database),
+        source=source,
+        version=version,
+        profile=profile,
+        delimiter=separators[delimiter],
+        smiles_column=smiles_column,
+        id_column=id_column,
+        name_column=name_column,
+        skip_header=skip_header,
         max_records=max_records,
     )
     typer.echo(json.dumps(report, indent=2))
@@ -113,10 +121,37 @@ def stock_import(
 @stock_app.command("status")
 def stock_status(database: Path = Path("data/stock.sqlite")) -> None:
     catalog = SQLiteStock(database)
-    typer.echo(json.dumps({
-        "database": str(database), "version": catalog.version,
-        "molecules": catalog.count(), "assertions": catalog.assertion_count(),
-    }, indent=2))
+    typer.echo(
+        json.dumps(
+            {
+                "database": str(database),
+                "version": catalog.version,
+                "molecules": catalog.count(),
+                "assertions": catalog.assertion_count(),
+            },
+            indent=2,
+        )
+    )
+
+
+@stock_app.command("verify")
+def stock_verify(
+    structure: str,
+    country: str = typer.Option(..., min=2, max=2),
+    url: list[str] | None = None,
+    service: str = typer.Option("http://127.0.0.1:8787"),
+    database: Path = Path("data/stock.sqlite"),
+    buyer_class: str = typer.Option("ordinary_individual"),
+) -> None:
+    """Verify exact availability through AvailEvidence and update a stock snapshot."""
+    result = AvailabilityGateway(service).verify_into_snapshot(
+        SQLiteStock(database),
+        structure,
+        country=country,
+        supplied_urls=url,
+        buyer_class=buyer_class,
+    )
+    typer.echo(json.dumps(asdict(result), indent=2))
 
 
 @app.command()

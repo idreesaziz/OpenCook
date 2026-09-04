@@ -60,8 +60,11 @@ class Planner(Protocol):
     name: str
 
     def search(
-        self, target: str, config: SearchConfig,
-        progress: ProgressCallback | None = None, should_cancel: CancelCallback | None = None,
+        self,
+        target: str,
+        config: SearchConfig,
+        progress: ProgressCallback | None = None,
+        should_cancel: CancelCallback | None = None,
     ) -> tuple[list[Route], SearchStats]: ...
 
 
@@ -192,24 +195,26 @@ class BestFirstPlanner:
             if progress is None or (not force and now - last_progress < 0.1):
                 return
             last_progress = now
-            progress({
-                "stage": stage,
-                "current_molecule": molecule,
-                "current_depth": depth,
-                "elapsed_seconds": round(now - started, 3),
-                "molecules_discovered": stats.molecules_discovered,
-                "molecules_expanded": stats.molecules_expanded,
-                "unique_reactions_examined": len(unique_reactions),
-                "frontier_size": len(queue),
-                "complete_routes_discovered": stats.complete_routes,
-                "deepest_complete_route": max(
-                    (route.metrics.longest_linear_sequence for route in results), default=0
-                ),
-                "model_calls": stats.model_calls,
-                "model_reactions_generated": stats.model_reactions_generated,
-                "model_failures": stats.model_failures,
-                "recent_reactions": list(recent_reactions),
-            })
+            progress(
+                {
+                    "stage": stage,
+                    "current_molecule": molecule,
+                    "current_depth": depth,
+                    "elapsed_seconds": round(now - started, 3),
+                    "molecules_discovered": stats.molecules_discovered,
+                    "molecules_expanded": stats.molecules_expanded,
+                    "unique_reactions_examined": len(unique_reactions),
+                    "frontier_size": len(queue),
+                    "complete_routes_discovered": stats.complete_routes,
+                    "deepest_complete_route": max(
+                        (route.metrics.longest_linear_sequence for route in results), default=0
+                    ),
+                    "model_calls": stats.model_calls,
+                    "model_reactions_generated": stats.model_reactions_generated,
+                    "model_failures": stats.model_failures,
+                    "recent_reactions": list(recent_reactions),
+                }
+            )
 
         report("initializing retrosynthetic search", canonical, force=True)
         while queue and stats.molecules_expanded < config.max_expansions:
@@ -235,7 +240,7 @@ class BestFirstPlanner:
                                 route.signature,
                             )
                         )
-                        del results[config.routes:]
+                        del results[config.routes :]
                         report("ranking deeper complete routes", force=True)
                     elif len(results) >= config.routes:
                         break
@@ -248,8 +253,13 @@ class BestFirstPlanner:
                 # Stopping is one OR alternative; expansion below remains another.
                 heapq.heappush(
                     queue,
-                    _State(state.cost + self._heuristic(state.root, rest, config.heuristic),
-                           next(counter), state.root, rest, state.cost),
+                    _State(
+                        state.cost + self._heuristic(state.root, rest, config.heuristic),
+                        next(counter),
+                        state.root,
+                        rest,
+                        state.cost,
+                    ),
                 )
             if depth >= config.max_depth:
                 continue

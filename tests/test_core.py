@@ -121,8 +121,13 @@ class FakeExpansionProvider(ExpansionProvider):
         if normalize(product).smiles == normalize("CCC").smiles:
             return [
                 Reaction(
-                    "model-bridge", ("CC",), "CCC", EvidenceClass.COMPUTATIONAL,
-                    0.7, "structurally_valid_not_forward_verified", prov,
+                    "model-bridge",
+                    ("CC",),
+                    "CCC",
+                    EvidenceClass.COMPUTATIONAL,
+                    0.7,
+                    "structurally_valid_not_forward_verified",
+                    prov,
                 )
             ][:limit]
         return []

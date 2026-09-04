@@ -91,6 +91,8 @@ class Route:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "root": self.root.to_dict(), "metrics": asdict(self.metrics),
-            "signature": self.signature, "complete": self.complete,
+            "root": self.root.to_dict(),
+            "metrics": asdict(self.metrics),
+            "signature": self.signature,
+            "complete": self.complete,
         }

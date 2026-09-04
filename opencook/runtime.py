@@ -37,8 +37,12 @@ def demo_runtime(db_path: str | None = None) -> tuple[ReactionStore, StockProvid
     stock = SQLiteStock(stock_path)
     if stock.count() == 0:
         import_stock(
-            ROOT / "data" / "fixtures" / "stock.smi", stock,
-            source="OpenCook benign fixture", version="fixture-1",
-            delimiter="\t", id_column=None, name_column=1,
+            ROOT / "data" / "fixtures" / "stock.smi",
+            stock,
+            source="OpenCook benign fixture",
+            version="fixture-1",
+            delimiter="\t",
+            id_column=None,
+            name_column=1,
         )
     return store, stock

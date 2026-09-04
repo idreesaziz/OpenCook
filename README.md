@@ -8,6 +8,10 @@ never presented as experimental precedent.
 
 OpenCook searches indexed reaction records backward from a molecular target, constructs an AND/OR synthesis graph, terminates branches at configured stock, and returns connected, ranked routes with evidence and provenance. It is deterministic, local-first scientific software—not an LLM application.
 
+For evidence-based public availability, OpenCook integrates with the independent
+AvailEvidence service. Availability checks are explicit and create versioned local
+stock snapshots; the planner never guesses sourceability from molecular complexity.
+
 ![OpenCook application](docs/assets/screenshot.svg)
 
 ## Quick start

@@ -79,9 +79,7 @@ class RetroChimeraProvider:
                 try:
                     from retrochimera import RetroChimeraDeNovoModel  # type: ignore[import-not-found]
                 except ImportError as exc:
-                    raise RuntimeError(
-                        "RetroChimera is not installed; run `uv sync --extra models`"
-                    ) from exc
+                    raise RuntimeError("RetroChimera is not installed; run `uv sync --extra models`") from exc
                 kwargs = {"model_dir": str(self.model_dir)} if self.model_dir else {}
                 self._model = RetroChimeraDeNovoModel(**kwargs)
         return self._model
@@ -126,9 +124,9 @@ class RetroChimeraProvider:
                 raw_probability = metadata.get("probability", metadata.get("score", 0.0))
                 probability = float(raw_probability) if raw_probability is not None else 0.0
                 probability = min(1.0, max(0.0, probability))
-                digest = hashlib.sha256(
-                    f"{canonical_product}>{'.'.join(reactants)}".encode()
-                ).hexdigest()[:20]
+                digest = hashlib.sha256(f"{canonical_product}>{'.'.join(reactants)}".encode()).hexdigest()[
+                    :20
+                ]
                 reactions.append(
                     Reaction(
                         id=f"model:retrochimera:{digest}",

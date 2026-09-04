@@ -5,9 +5,7 @@ from opencook.stock import SQLiteStock, import_stock
 
 def test_sqlite_stock_stream_import_and_provenance(tmp_path: Path) -> None:
     source = tmp_path / "catalog.smi"
-    source.write_text(
-        "CC(=O)OC(C)=O ZINC1\nO=C(O)c1ccccc1O ZINC2\ninvalid ZINC3\n", encoding="utf-8"
-    )
+    source.write_text("CC(=O)OC(C)=O ZINC1\nO=C(O)c1ccccc1O ZINC2\ninvalid ZINC3\n", encoding="utf-8")
     stock = SQLiteStock(tmp_path / "stock.sqlite")
 
     report = import_stock(source, stock, source="test catalog", version="2026-09")

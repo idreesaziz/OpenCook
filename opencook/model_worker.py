@@ -23,9 +23,7 @@ def main() -> None:
     for line in sys.stdin:
         try:
             request = json.loads(line)
-            batches = model(
-                [Molecule(request["product"])], num_results=int(request.get("limit", 5))
-            )
+            batches = model([Molecule(request["product"])], num_results=int(request.get("limit", 5)))
             predictions = [
                 {
                     "reactants": [{"smiles": molecule.smiles} for molecule in reaction.reactants],

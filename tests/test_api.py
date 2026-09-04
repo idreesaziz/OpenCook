@@ -55,10 +55,7 @@ def test_name_enrichment_limit_leaves_additional_nodes_unnamed(monkeypatch: obje
     monkeypatch.setattr(  # type: ignore[attr-defined]
         api.name_provider, "lookup", lambda _structure: None
     )
-    children = [
-        {"molecule": "C" * size, "precursors": [], "display_name": None}
-        for size in range(1, 30)
-    ]
+    children = [{"molecule": "C" * size, "precursors": [], "display_name": None} for size in range(1, 30)]
     routes = [
         {
             "root": {

@@ -28,3 +28,16 @@ Every assertion retains its source, catalog identifier, and profile. Use
 materials; broader purchasable or make-on-demand exports belong to
 `commercial_catalog`. Reaction reactants are never assumed available merely
 because they occur in an experimental record.
+# Availability evidence
+
+OpenCook can consume the independent AvailEvidence service without embedding web
+retrieval into retrosynthesis. Start AvailEvidence separately, then verify a candidate
+into an immutable local stock snapshot:
+
+```bash
+opencook stock verify "CCO" --country US --url https://merchant.example/product
+```
+
+Only a strict `terminal=true` verdict is imported. Catalog listings, ambiguous names,
+and unverified shopping results never become stock automatically. Network availability
+lookups are explicit and are not performed in the planner's expansion loop.
