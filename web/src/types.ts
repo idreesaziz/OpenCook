@@ -20,6 +20,28 @@ export type Reaction = {
   provenance: Provenance[];
   yield_percent?: number;
 };
+export type AvailabilityObservation = {
+  id: string;
+  state: string;
+  provider: string;
+  upstream_source: string;
+  merchant?: string | null;
+  price?: number | null;
+  currency?: string | null;
+  identity_decision: string;
+  identity_reasons: string[];
+  observed_at: string;
+  expires_at: string;
+  warnings: string[];
+};
+export type AvailabilityVerdict = {
+  state: string;
+  terminal: boolean;
+  confidence: number;
+  reasons: string[];
+  observations: AvailabilityObservation[];
+  provider_errors: Record<string, string>;
+};
 export type RouteNode = {
   molecule: string;
   in_stock: boolean;
@@ -35,6 +57,7 @@ export type RouteNode = {
   };
   reaction: Reaction | null;
   precursors: RouteNode[];
+  availability?: AvailabilityVerdict;
 };
 export type Route = {
   root: RouteNode;
@@ -87,6 +110,9 @@ export type SearchResult = {
       evidence: string;
       depth: number;
     }>;
+    availability_checked?: number;
+    availability_total?: number;
+    availability_current?: string | null;
   };
   configuration?: {
     max_depth: number;
@@ -94,6 +120,21 @@ export type SearchResult = {
     timeout_seconds: number;
     routes: number;
     max_model_calls: number;
+    availability_enabled: boolean;
+    availability_country: string | null;
+    availability_candidate_limit: number;
+  };
+  availability?: {
+    enabled: boolean;
+    status: string;
+    checked: number;
+    total: number;
+    verified: number;
+    candidate_listings: number;
+    country: string | null;
+    buyer_class: string;
+    snapshot_version?: string;
+    error?: string;
   };
   message?: string;
   error?: string;

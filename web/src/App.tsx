@@ -40,6 +40,9 @@ export function App() {
   const [selected, setSelected] = useState<RouteNode | Reaction | null>(null),
     [error, setError] = useState("");
   const [health, setHealth] = useState<Health | null>(null);
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(false);
+  const [availabilityCountry, setAvailabilityCountry] = useState("");
+  const [availabilityHealth, setAvailabilityHealth] = useState("unchecked");
   const [searchStartedAt, setSearchStartedAt] = useState(0);
   const [liveNow, setLiveNow] = useState(0);
   useEffect(() => {
@@ -48,6 +51,10 @@ export function App() {
       .then(setHealth);
   }, []);
   const run = async () => {
+    if (availabilityEnabled && !/^[A-Z]{2}$/.test(availabilityCountry.toUpperCase())) {
+      setError("Enter a two-letter country code for availability evidence.");
+      return;
+    }
     const startedAt = Date.now();
     setSearchStartedAt(startedAt);
     setLiveNow(startedAt);
@@ -58,7 +65,12 @@ export function App() {
       const response = await fetch("/api/v1/searches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ structure: input, routes: 5 }),
+        body: JSON.stringify({
+          structure: input,
+          routes: 5,
+          availability_enabled: availabilityEnabled,
+          availability_country: availabilityEnabled ? availabilityCountry.toUpperCase() : null,
+        }),
       });
       if (!response.ok) throw new Error((await response.json()).detail);
       const created = await response.json();
@@ -77,6 +89,13 @@ export function App() {
       setBusy(false);
     }
   };
+  useEffect(() => {
+    if (!availabilityEnabled) return;
+    void fetch("/api/v1/availability/health")
+      .then((response) => response.json())
+      .then((result) => setAvailabilityHealth(result.status))
+      .catch(() => setAvailabilityHealth("unavailable"));
+  }, [availabilityEnabled]);
   useEffect(() => {
     if (!busy) return;
     const clock = setInterval(() => setLiveNow(Date.now()), 200);
@@ -131,6 +150,37 @@ export function App() {
               An open-source search engine for chemical synthesis.
             </p>
             <MoleculeEditor value={input} onChange={setInput} />
+            <div className="availability-settings">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={availabilityEnabled}
+                  onChange={(event) => {
+                    setAvailabilityEnabled(event.target.checked);
+                    if (event.target.checked) setAvailabilityHealth("checking");
+                  }}
+                />
+                <span>VERIFY REAL-WORLD AVAILABILITY</span>
+              </label>
+              {availabilityEnabled ? (
+                <>
+                  <label className="country-field">
+                    MARKET
+                    <input
+                      value={availabilityCountry}
+                      maxLength={2}
+                      placeholder="US"
+                      aria-label="Two-letter availability country code"
+                      onChange={(event) => setAvailabilityCountry(event.target.value.toUpperCase())}
+                    />
+                  </label>
+                  <code className={`service-state ${availabilityHealth}`}>
+                    AVAIL:: {availabilityHealth}
+                  </code>
+                </>
+              ) : null}
+              <small>Opt-in network check. Exact identity and regional evidence are required.</small>
+            </div>
             <button className="primary" onClick={run} disabled={busy}>
               Find synthesis <span>-&gt;</span>
             </button>
@@ -207,6 +257,7 @@ export function App() {
                     <ProgressGauge label="ROUTE RECOVERY" value={job.progress?.complete_routes_discovered ?? 0} maximum={job.configuration?.routes ?? 5} detail={`${job.progress?.complete_routes_discovered ?? 0} / ${job.configuration?.routes ?? 5}`} />
                     <ProgressGauge label="MODEL FALLBACK" value={job.progress?.model_calls ?? 0} maximum={job.configuration?.max_model_calls ?? 25} detail={`${job.progress?.model_calls ?? 0} calls · ${job.progress?.model_reactions_generated ?? 0} proposals`} />
                     <ProgressGauge label="FRONTIER LOAD" value={job.progress?.frontier_size ?? 0} maximum={Math.max(job.progress?.molecules_discovered ?? 1, 1)} detail={`${job.progress?.frontier_size ?? 0} queued`} />
+                    {job.availability?.enabled ? <ProgressGauge label="AVAILABILITY EVIDENCE" value={job.progress?.availability_checked ?? 0} maximum={Math.max(job.progress?.availability_total ?? 1, 1)} detail={`${job.progress?.availability_checked ?? 0} / ${job.progress?.availability_total ?? 0} leaves`} /> : null}
                   </div>
                   <div className="progress-metrics">
                     <span>depth <strong>{job.progress?.current_depth ?? 0}</strong></span>
@@ -217,12 +268,13 @@ export function App() {
                     <span>deepest <strong>{job.progress?.deepest_complete_route ?? 0}</strong></span>
                     <span>model calls <strong>{job.progress?.model_calls ?? 0}</strong></span>
                     <span>proposals <strong>{job.progress?.model_reactions_generated ?? 0}</strong></span>
+                    {job.availability?.enabled ? <span>verified offers <strong>{job.availability.verified}</strong></span> : null}
                     <span>{(job.progress?.elapsed_seconds ?? 0).toFixed(1)} s</span>
                   </div>
                   <div className="assembly-feed">
                     <div className="trace-label"><span>GRAPH ASSEMBLY // ACCEPTED DISCONNECTIONS</span></div>
-                    {(job.progress?.recent_reactions ?? []).length ? job.progress?.recent_reactions.map((reaction) => (
-                      <div className="assembly-line" key={`${reaction.id}-${reaction.depth}`}>
+                    {(job.progress?.recent_reactions ?? []).length ? job.progress?.recent_reactions.map((reaction, index) => (
+                      <div className="assembly-line" key={`${reaction.id}-${reaction.depth}-${index}`}>
                         <em>{reaction.evidence === "computational_proposal" ? "MODEL" : "ORD"}</em>
                         <code>{reaction.reactants.join(" + ")} → {reaction.product}</code>
                         <small>d{reaction.depth} / {reaction.id}</small>
@@ -239,6 +291,19 @@ export function App() {
               </p>
             ) : null}
             {job.message ? <p className="notice">{job.message}</p> : null}
+            {job.availability?.enabled ? (
+              <section className="availability-summary">
+                <div><span>AVAILABILITY SNAPSHOT</span><b>{job.availability.status}</b></div>
+                <dl>
+                  <div><dt>market</dt><dd>{job.availability.country}</dd></div>
+                  <div><dt>leaves checked</dt><dd>{job.availability.checked} / {job.availability.total}</dd></div>
+                  <div><dt>verified terminal</dt><dd>{job.availability.verified}</dd></div>
+                  <div><dt>candidate listings</dt><dd>{job.availability.candidate_listings}</dd></div>
+                </dl>
+                {job.availability.snapshot_version ? <code>{job.availability.snapshot_version}</code> : null}
+                {job.availability.error ? <p className="availability-error">Service unavailable: {job.availability.error}</p> : null}
+              </section>
+            ) : null}
             {routes.length ? (
               <>
                 <div className="route-tabs">
@@ -269,7 +334,9 @@ export function App() {
                         <b>{item.display_name ?? item.molecule}</b>
                         <code>{item.molecule}</code>
                         <span>
-                          {item.name_record
+                          {item.availability?.terminal
+                            ? "Verified public offer in requested market"
+                            : item.name_record
                             ? `${item.name_record.source} ${item.name_record.source_id}`
                             : "No database name found"}
                         </span>
@@ -280,6 +347,7 @@ export function App() {
                         <b>{item.display_name ?? item.molecule}</b>
                         <code>{item.molecule}</code>
                         <span>Unresolved — no complete indexed path to selected stock</span>
+                        {item.availability ? <span className="availability-state">availability: {item.availability.state.replaceAll("_", " ")}</span> : null}
                       </button>
                     ))}
                   </div>
@@ -351,6 +419,26 @@ export function App() {
                     evidence or a statement of purity.
                   </p>
                 </>
+              ) : null}
+              {selected.availability ? (
+                <section className="availability-detail">
+                  <p className="source-label">Availability evidence</p>
+                  <dl>
+                    <dt>Verdict</dt><dd>{selected.availability.state.replaceAll("_", " ")}</dd>
+                    <dt>Terminal stock</dt><dd>{selected.availability.terminal ? "yes" : "no"}</dd>
+                    <dt>Confidence</dt><dd>{Math.round(selected.availability.confidence * 100)}%</dd>
+                  </dl>
+                  {selected.availability.reasons.map((reason) => <p key={reason}>{reason}</p>)}
+                  {selected.availability.observations.map((observation) => (
+                    <div className="provenance" key={observation.id}>
+                      <b>{observation.merchant ?? observation.upstream_source}</b>
+                      <span>{observation.provider} / {observation.identity_decision}</span>
+                      <span>{observation.state.replaceAll("_", " ")}</span>
+                      {observation.price != null ? <span>{observation.price} {observation.currency}</span> : null}
+                    </div>
+                  ))}
+                  <p className="source-warning">Availability is time- and market-scoped evidence, not a guarantee of eligibility or successful checkout.</p>
+                </section>
               ) : null}
             </>
           )}

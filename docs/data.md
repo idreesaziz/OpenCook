@@ -41,3 +41,34 @@ opencook stock verify "CCO" --country US --url https://merchant.example/product
 Only a strict `terminal=true` verdict is imported. Catalog listings, ambiguous names,
 and unverified shopping results never become stock automatically. Network availability
 lookups are explicit and are not performed in the planner's expansion loop.
+
+## Web application integration
+
+Place the OpenCook and AvailEvidence repositories beside one another, start both
+services, and enable **VERIFY REAL-WORLD AVAILABILITY** in the molecule search screen.
+The market must be an explicit ISO 3166-1 alpha-2 country code.
+
+```bash
+# terminal 1
+cd ../AvailEvidence
+uv run availevidence serve
+
+# terminal 2
+cd ../OpenCook
+uv run opencook serve
+```
+
+The web-search job performs retrosynthesis first, collects a bounded set of unique
+unresolved leaves, checks them through AvailEvidence with live progress, and attaches
+every verdict to the matching molecule. If strict terminal offers are verified, it
+constructs a per-search versioned stock overlay and resumes retrosynthesis. The global
+stock database is not mutated by a web query.
+
+Docker users with both sibling repositories can run the optional service profile:
+
+```bash
+docker compose --profile availability up --build
+```
+
+Availability checking is off by default because precursor identities may be
+confidential and configured discovery providers make external network requests.

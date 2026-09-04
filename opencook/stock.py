@@ -23,6 +23,30 @@ class StockProvider(Protocol):
     def count(self) -> int: ...
 
 
+class OverlayStock:
+    """Immutable per-search verified additions layered over a configured stock."""
+
+    def __init__(
+        self,
+        base: StockProvider,
+        additions: dict[str, tuple[str | None, tuple[str, ...]]],
+        version: str,
+    ) -> None:
+        self.base = base
+        self._additions = {canonical_identity(smiles)[0]: value for smiles, value in additions.items()}
+        self.version = version
+
+    def contains(self, smiles: str) -> bool:
+        return self.base.contains(smiles) or canonical_identity(smiles)[0] in self._additions
+
+    def describe(self, smiles: str) -> tuple[str | None, tuple[str, ...]]:
+        identity = canonical_identity(smiles)[0]
+        return self._additions.get(identity, self.base.describe(smiles))
+
+    def count(self) -> int:
+        return self.base.count() + len(self._additions)
+
+
 class SQLiteStock:
     """Disk-backed, stereochemistry-aware, provenance-preserving stock."""
 

@@ -138,3 +138,10 @@ dt { color: var(--muted); } dd { margin: 0; color: var(--text-soft); text-transf
   aside { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+.availability-settings { width:min(760px,100%); margin:14px auto 4px; padding:12px 14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; color:var(--muted); background:var(--surface-0); border:1px solid var(--line-strong); font-size:9px; }
+.availability-settings label { display:flex; align-items:center; gap:9px; color:var(--green-300); letter-spacing:.08em; }
+.availability-settings input[type="checkbox"] { width:14px; height:14px; accent-color:var(--green-500); }
+.availability-settings .country-field { margin-left:auto; }
+.availability-settings .country-field input { width:44px; padding:5px; color:var(--text); background:var(--surface-2); border:1px solid var(--line); font:10px var(--font-mono); text-transform:uppercase; }
+.availability-settings small { width:100%; color:var(--faint); }
+.service-state { padding:5px 7px; color:var(--muted); border:1px solid var(--line); }.service-state.connected{color:var(--green-300);border-color:var(--green-500)}.service-state.unavailable{color:var(--rust-300);border-color:var(--rust-500)}

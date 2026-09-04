@@ -32,11 +32,19 @@ class AvailabilityGateway:
         self.base_url = base_url.rstrip("/")
         self.transport = transport
 
+    def health(self) -> dict[str, Any]:
+        with httpx.Client(transport=self.transport, timeout=3) as client:
+            response = client.get(f"{self.base_url}/v1/health")
+            response.raise_for_status()
+            result: dict[str, Any] = response.json()
+            return result
+
     def evaluate(
         self,
         smiles: str,
         *,
         country: str,
+        name: str | None = None,
         supplied_urls: list[str] | None = None,
         buyer_class: str = "ordinary_individual",
     ) -> dict[str, Any]:
@@ -44,7 +52,7 @@ class AvailabilityGateway:
         payload = {
             "identity": {
                 "domain": "chemical",
-                "name": None,
+                "name": name,
                 "identifiers": {"inchikey": molecule.inchikey},
                 "attributes": {"canonical_smiles": molecule.smiles},
             },

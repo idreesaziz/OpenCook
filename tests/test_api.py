@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 
 from opencook import api
 from opencook.api import app
+from opencook.domain import EvidenceClass, Provenance, Reaction
+from opencook.stock import SetStock
 
 client = TestClient(app)
 
@@ -69,3 +71,78 @@ def test_name_enrichment_limit_leaves_additional_nodes_unnamed(monkeypatch: obje
     api._enrich_names(routes)
 
     assert all(node["display_name"] is None for node in children)
+
+
+def test_web_search_checks_unresolved_leaves_and_attaches_evidence(monkeypatch: object) -> None:
+    calls: list[str] = []
+
+    def evaluate(smiles: str, **_kwargs: object) -> dict[str, object]:
+        calls.append(smiles)
+        return {
+            "state": "listed_in_stock",
+            "terminal": False,
+            "confidence": 0.7,
+            "reasons": ["candidate listing requires exact merchant verification"],
+            "observations": [
+                {
+                    "id": f"observation-{len(calls)}",
+                    "state": "listed_in_stock",
+                    "provider": "fixture",
+                    "upstream_source": "shopping fixture",
+                    "identity_decision": "ambiguous",
+                    "identity_reasons": ["no stable product identifier"],
+                    "observed_at": "2026-09-05T00:00:00Z",
+                    "expires_at": "2026-09-06T00:00:00Z",
+                    "warnings": ["verification required"],
+                }
+            ],
+            "provider_errors": {},
+        }
+
+    monkeypatch.setattr(api.availability_gateway, "evaluate", evaluate)  # type: ignore[attr-defined]
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        api.availability_gateway, "health", lambda: {"status": "ok"}
+    )
+    monkeypatch.setattr(api, "stock", SetStock([]))  # type: ignore[attr-defined]
+    api.store.put_reaction(
+        Reaction(
+            "availability-partial-fixture",
+            ("CCCCC",),
+            "CCCCCC",
+            EvidenceClass.EXACT,
+            1.0,
+            "checked",
+            (Provenance("test", "1", "availability", "fixture", "CC0"),),
+        )
+    )
+    created = client.post(
+        "/api/v1/searches",
+        json={
+            "structure": "CCCCCC",
+            "availability_enabled": True,
+            "availability_country": "US",
+            "availability_candidate_limit": 3,
+        },
+    ).json()
+    for _ in range(200):
+        result = client.get(f"/api/v1/searches/{created['id']}").json()
+        if result["status"] == "completed":
+            break
+        time.sleep(0.01)
+
+    assert result["status"] == "completed"
+    assert result["availability"]["status"] == "completed"
+    assert result["availability"]["checked"] == len(calls) > 0
+    assert result["availability"]["candidate_listings"] == len(calls)
+
+    def leaves(node: dict[str, object]) -> list[dict[str, object]]:
+        children = node["precursors"]
+        assert isinstance(children, list)
+        result_nodes = [node] if not node["in_stock"] and not node["reaction"] else []
+        for child in children:
+            assert isinstance(child, dict)
+            result_nodes.extend(leaves(child))
+        return result_nodes
+
+    unresolved = [leaf for route in result["routes"] for leaf in leaves(route["root"])]
+    assert any(leaf.get("availability", {}).get("state") == "listed_in_stock" for leaf in unresolved)
