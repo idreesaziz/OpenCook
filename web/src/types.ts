@@ -26,6 +26,7 @@ export type AvailabilityObservation = {
   provider: string;
   upstream_source: string;
   merchant?: string | null;
+  offer_url?: string | null;
   price?: number | null;
   currency?: string | null;
   identity_decision: string;

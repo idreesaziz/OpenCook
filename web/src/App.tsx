@@ -435,6 +435,17 @@ export function App() {
                       <span>{observation.provider} / {observation.identity_decision}</span>
                       <span>{observation.state.replaceAll("_", " ")}</span>
                       {observation.price != null ? <span>{observation.price} {observation.currency}</span> : null}
+                      <span>observed {new Date(observation.observed_at).toLocaleString()}</span>
+                      {observation.offer_url ? (
+                        <a
+                          className="evidence-link"
+                          href={observation.offer_url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                        >
+                          OPEN SOURCE PAGE ↗
+                        </a>
+                      ) : null}
                     </div>
                   ))}
                   <p className="source-warning">Availability is time- and market-scoped evidence, not a guarantee of eligibility or successful checkout.</p>
