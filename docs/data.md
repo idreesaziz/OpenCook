@@ -58,9 +58,11 @@ cd ../OpenCook
 uv run opencook serve
 ```
 
-The web-search job performs retrosynthesis first, collects a bounded set of unique
-unresolved leaves, checks them through AvailEvidence with live progress, and attaches
-every verdict to the matching molecule. If strict terminal offers are verified, it
+The web-search job performs retrosynthesis first, collects a bounded set of every
+unique route leaf (both configured stock and unresolved), checks them through
+AvailEvidence with live progress, and attaches every verdict to the matching molecule.
+This means existing stock assumptions receive inspectable source links too. If strict
+terminal offers are verified, it
 constructs a per-search versioned stock overlay and resumes retrosynthesis. The global
 stock database is not mutated by a web query.
 

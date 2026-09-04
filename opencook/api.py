@@ -62,7 +62,7 @@ class SearchInput(MoleculeInput):
         "ordinary_individual",
         pattern="^(ordinary_individual|professional|organization)$",
     )
-    availability_candidate_limit: int = Field(8, ge=1, le=30)
+    availability_candidate_limit: int = Field(30, ge=1, le=100)
 
     @model_validator(mode="after")
     def require_availability_market(self) -> SearchInput:
@@ -155,11 +155,11 @@ def _enrich_names(routes: list[dict[str, Any]]) -> None:
             node["name_record"] = asdict(name)
 
 
-def _unresolved_leaves(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _availability_leaves(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     leaves: dict[str, dict[str, Any]] = {}
 
     def visit(node: dict[str, Any]) -> None:
-        if not node["in_stock"] and not node["reaction"]:
+        if not node["precursors"]:
             leaves.setdefault(str(node["molecule"]), node)
         for precursor in node["precursors"]:
             visit(precursor)
@@ -187,7 +187,7 @@ def _check_availability(
 ) -> tuple[dict[str, dict[str, Any]], StockProvider]:
     if not body.availability_enabled or not body.availability_country:
         return {}, stock
-    leaves = _unresolved_leaves(serialized_routes)[: body.availability_candidate_limit]
+    leaves = _availability_leaves(serialized_routes)[: body.availability_candidate_limit]
     verdicts: dict[str, dict[str, Any]] = {}
     additions: dict[str, tuple[str | None, tuple[str, ...]]] = {}
     observation_ids: list[str] = []
