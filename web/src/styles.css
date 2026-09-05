@@ -145,5 +145,6 @@ dt { color: var(--muted); } dd { margin: 0; color: var(--text-soft); text-transf
 .availability-settings input[type="checkbox"] { width:14px; height:14px; accent-color:var(--green-500); }
 .availability-settings .country-field { margin-left:auto; }
 .availability-settings .country-field input { width:44px; padding:5px; color:var(--text); background:var(--surface-2); border:1px solid var(--line); font:10px var(--font-mono); text-transform:uppercase; }
+.availability-settings .rounds-field input { width:42px; padding:5px; color:var(--text); background:var(--surface-2); border:1px solid var(--line); font:10px var(--font-mono); }
 .availability-settings small { width:100%; color:var(--faint); }
 .service-state { padding:5px 7px; color:var(--muted); border:1px solid var(--line); }.service-state.connected{color:var(--green-300);border-color:var(--green-500)}.service-state.unavailable{color:var(--rust-300);border-color:var(--rust-500)}

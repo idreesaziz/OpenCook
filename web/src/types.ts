@@ -114,6 +114,8 @@ export type SearchResult = {
     availability_checked?: number;
     availability_total?: number;
     availability_current?: string | null;
+    search_epoch?: number;
+    search_epochs?: number;
   };
   configuration?: {
     max_depth: number;
@@ -124,6 +126,7 @@ export type SearchResult = {
     availability_enabled: boolean;
     availability_country: string | null;
     availability_candidate_limit: number;
+    availability_max_rounds: number;
   };
   availability?: {
     enabled: boolean;
@@ -134,6 +137,8 @@ export type SearchResult = {
     candidate_listings: number;
     country: string | null;
     buyer_class: string;
+    rounds_completed?: number;
+    termination?: string;
     snapshot_version?: string;
     error?: string;
   };

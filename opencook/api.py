@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import threading
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
@@ -18,7 +20,7 @@ from .chemistry import MoleculeError, depict_svg, normalize
 from .names import PubChemNameProvider
 from .runtime import ROOT, demo_runtime, model_runtime
 from .search import BestFirstPlanner, BreadthFirstPlanner, SearchConfig
-from .stock import OverlayStock, StockProvider
+from .stock import OverlayStock, SetStock, StockProvider
 
 app = FastAPI(
     title="OpenCook API", version=__version__, description="Deterministic reaction-data retrosynthesis API"
@@ -63,6 +65,7 @@ class SearchInput(MoleculeInput):
         pattern="^(ordinary_individual|professional|organization)$",
     )
     availability_candidate_limit: int = Field(30, ge=1, le=100)
+    availability_max_rounds: int = Field(3, ge=1, le=8)
 
     @model_validator(mode="after")
     def require_availability_market(self) -> SearchInput:
@@ -180,36 +183,24 @@ def _attach_availability(routes: list[dict[str, Any]], verdicts: dict[str, dict[
         visit(route["root"])
 
 
-def _check_availability(
+def _check_new_leaves(
     job_id: str,
     body: SearchInput,
     serialized_routes: list[dict[str, Any]],
-) -> tuple[dict[str, dict[str, Any]], StockProvider]:
-    if not body.availability_enabled or not body.availability_country:
-        return {}, stock
-    leaves = _availability_leaves(serialized_routes)[: body.availability_candidate_limit]
-    verdicts: dict[str, dict[str, Any]] = {}
-    additions: dict[str, tuple[str | None, tuple[str, ...]]] = {}
-    observation_ids: list[str] = []
-    jobs[job_id]["availability"] = {
-        "enabled": True,
-        "status": "running",
-        "checked": 0,
-        "total": len(leaves),
-        "verified": 0,
-        "candidate_listings": 0,
-        "country": body.availability_country,
-        "buyer_class": body.availability_buyer_class,
-    }
-    try:
-        availability_gateway.health()
-    except Exception as exc:
-        jobs[job_id]["availability"].update(
-            status="unavailable",
-            error=f"{type(exc).__name__}: {exc}",
-        )
-        return {}, stock
-    for index, leaf in enumerate(leaves, start=1):
+    verdicts: dict[str, dict[str, Any]],
+    additions: dict[str, tuple[str | None, tuple[str, ...]]],
+    observation_ids: list[str],
+) -> int:
+    assert body.availability_country is not None
+    remaining = body.availability_candidate_limit - len(verdicts)
+    leaves = [
+        leaf
+        for leaf in _availability_leaves(serialized_routes)
+        if str(leaf["molecule"]) not in verdicts
+    ][:remaining]
+    jobs[job_id]["availability"]["total"] = len(verdicts) + len(leaves)
+    verified_before = len(additions)
+    for leaf in leaves:
         if jobs[job_id].get("cancel_requested"):
             break
         molecule = str(leaf["molecule"])
@@ -217,8 +208,8 @@ def _check_availability(
             **jobs[job_id]["progress"],
             "stage": "checking real-world availability evidence",
             "availability_current": molecule,
-            "availability_checked": index - 1,
-            "availability_total": len(leaves),
+            "availability_checked": len(verdicts),
+            "availability_total": jobs[job_id]["availability"]["total"],
         }
         try:
             verdict = availability_gateway.evaluate(
@@ -248,28 +239,35 @@ def _check_availability(
             1 for item in observations if item.get("state") in {"listed_in_stock", "professional_catalog"}
         )
         jobs[job_id]["availability"].update(
-            checked=index,
+            checked=len(verdicts),
             verified=len(additions),
-            candidate_listings=jobs[job_id]["availability"]["candidate_listings"] + candidate_count,
+            candidate_listings=(
+                jobs[job_id]["availability"]["candidate_listings"] + candidate_count
+            ),
         )
+    return len(additions) - verified_before
+
+
+def _availability_stock(
+    body: SearchInput,
+    additions: dict[str, tuple[str | None, tuple[str, ...]]],
+    observation_ids: list[str],
+) -> StockProvider:
+    assert body.availability_country is not None
     snapshot_digest = uuid.uuid5(uuid.NAMESPACE_URL, "|".join(sorted(observation_ids))).hex[:12]
     version = (
         f"{stock.version}+availability:{body.availability_country}:"
         f"{body.availability_buyer_class}:{snapshot_digest}"
     )
-    jobs[job_id]["availability"].update(
-        status="completed",
-        snapshot_version=version,
-        verdicts=verdicts,
-    )
-    return verdicts, OverlayStock(stock, additions, version) if additions else stock
+    verified_only = SetStock([], version=f"verified-only:{stock.version}")
+    return OverlayStock(verified_only, additions, version)
 
 
 def _run(job_id: str, body: SearchInput) -> None:
     try:
         jobs[job_id]["status"] = "running"
         planner_cls = BreadthFirstPlanner if body.planner == "breadth_first_baseline" else BestFirstPlanner
-        config = SearchConfig(
+        base_config = SearchConfig(
             max_depth=body.max_depth,
             max_expansions=body.max_expansions,
             timeout_seconds=body.timeout_seconds,
@@ -283,49 +281,151 @@ def _run(job_id: str, body: SearchInput) -> None:
         )
 
         def progress(update: dict[str, object]) -> None:
-            jobs[job_id]["progress"] = {**jobs[job_id]["progress"], **update}
+            cumulative = dict(update)
+            cumulative["elapsed_seconds"] = round(time.monotonic() - started, 3)
+            cumulative["molecules_expanded"] = total_expansions + int(
+                update.get("molecules_expanded", 0)
+            )
+            cumulative["unique_reactions_examined"] = total_reactions + int(
+                update.get("unique_reactions_examined", 0)
+            )
+            cumulative["model_calls"] = total_model_calls + int(update.get("model_calls", 0))
+            cumulative["model_reactions_generated"] = total_model_generated + int(
+                update.get("model_reactions_generated", 0)
+            )
+            cumulative["model_failures"] = total_model_failures + int(
+                update.get("model_failures", 0)
+            )
+            jobs[job_id]["progress"] = {**jobs[job_id]["progress"], **cumulative}
 
-        routes, stats = planner_cls(store, stock, model_provider).search(
-            body.structure,
-            config,
-            progress=progress,
-            should_cancel=lambda: bool(jobs[job_id].get("cancel_requested")),
+        availability_active = body.availability_enabled and body.availability_country is not None
+        if availability_active:
+            try:
+                availability_gateway.health()
+                jobs[job_id]["availability"]["status"] = "running"
+            except Exception as exc:
+                jobs[job_id]["availability"].update(
+                    status="unavailable", error=f"{type(exc).__name__}: {exc}"
+                )
+                availability_active = False
+
+        planning_stock: StockProvider = (
+            SetStock([], version=f"verified-only:{stock.version}") if availability_active else stock
         )
-        if jobs[job_id].get("cancel_requested"):
-            jobs[job_id]["status"] = "canceled"
-            return
-        serialized_routes = [route.to_dict() for route in routes]
-        jobs[job_id]["progress"] = {
-            **jobs[job_id]["progress"],
-            "stage": "resolving molecule names",
-        }
-        try:
-            _enrich_names(serialized_routes)
-        except Exception:
-            # Names are presentation metadata, never part of route validity.
-            logger.exception("Name enrichment failed for search job %s", job_id)
-        verdicts, verified_stock = _check_availability(job_id, body, serialized_routes)
-        if jobs[job_id].get("cancel_requested"):
-            jobs[job_id]["status"] = "canceled"
-            return
-        if verified_stock is not stock:
-            jobs[job_id]["progress"] = {
-                **jobs[job_id]["progress"],
-                "stage": "verified leaves found; resuming retrosynthesis",
-                "availability_checked": jobs[job_id]["availability"]["checked"],
-                "availability_total": jobs[job_id]["availability"]["total"],
-            }
-            routes, stats = planner_cls(store, verified_stock, model_provider).search(
+        verdicts: dict[str, dict[str, Any]] = {}
+        additions: dict[str, tuple[str | None, tuple[str, ...]]] = {}
+        observation_ids: list[str] = []
+        started = time.monotonic()
+        total_expansions = total_reactions = total_model_calls = total_model_generated = 0
+        total_model_failures = 0
+        serialized_routes: list[dict[str, Any]] = []
+        routes = []
+        stats = None
+        rounds = body.availability_max_rounds if availability_active else 1
+
+        for epoch in range(1, rounds + 1):
+            elapsed = time.monotonic() - started
+            remaining_time = max(0.1, body.timeout_seconds - elapsed)
+            epochs_left = rounds - epoch + 1
+            epoch_config = replace(
+                base_config,
+                max_depth=(
+                    max(1, math.ceil(body.max_depth * epoch / rounds))
+                    if availability_active
+                    else body.max_depth
+                ),
+                timeout_seconds=max(0.1, remaining_time / epochs_left),
+                max_expansions=max(1, body.max_expansions - total_expansions),
+                max_model_calls=max(0, body.max_model_calls - total_model_calls),
+            )
+            jobs[job_id]["progress"].update(
+                stage=f"purchase-directed retrosynthesis epoch {epoch}/{rounds}",
+                search_epoch=epoch,
+                search_epochs=rounds,
+            )
+            routes, epoch_stats = planner_cls(store, planning_stock, model_provider).search(
                 body.structure,
-                config,
+                epoch_config,
                 progress=progress,
                 should_cancel=lambda: bool(jobs[job_id].get("cancel_requested")),
             )
+            stats = epoch_stats
+            total_expansions += epoch_stats.molecules_expanded
+            total_reactions += epoch_stats.reactions_examined
+            total_model_calls += epoch_stats.model_calls
+            total_model_generated += epoch_stats.model_reactions_generated
+            total_model_failures += epoch_stats.model_failures
             serialized_routes = [route.to_dict() for route in routes]
+            jobs[job_id]["progress"]["stage"] = "resolving molecule names"
             try:
                 _enrich_names(serialized_routes)
             except Exception:
-                logger.exception("Name enrichment failed after availability resume for %s", job_id)
+                logger.exception("Name enrichment failed for search job %s", job_id)
+            if not availability_active:
+                break
+            newly_verified = _check_new_leaves(
+                job_id,
+                body,
+                serialized_routes,
+                verdicts,
+                additions,
+                observation_ids,
+            )
+            _attach_availability(serialized_routes, verdicts)
+            if jobs[job_id].get("cancel_requested"):
+                jobs[job_id]["status"] = "canceled"
+                return
+            if newly_verified:
+                planning_stock = _availability_stock(body, additions, observation_ids)
+                jobs[job_id]["progress"]["stage"] = (
+                    f"verified {newly_verified} new leaf/leaves; rebuilding routes"
+                )
+            elif epoch < rounds:
+                jobs[job_id]["progress"]["stage"] = (
+                    "no purchasable terminal yet; widening retrosynthetic depth"
+                )
+            else:
+                jobs[job_id]["availability"]["termination"] = "search_budget_exhausted"
+
+        if stats is None:
+            raise RuntimeError("planner did not execute")
+        # A verification on the last allowed epoch still requires one reconstruction
+        # pass so newly solved leaves can produce complete connected routes.
+        if availability_active and additions and not any(route.complete for route in routes):
+            final_config = replace(
+                base_config,
+                timeout_seconds=max(0.1, body.timeout_seconds - (time.monotonic() - started)),
+                max_expansions=max(1, body.max_expansions - total_expansions),
+                max_model_calls=max(0, body.max_model_calls - total_model_calls),
+            )
+            routes, final_stats = planner_cls(store, planning_stock, model_provider).search(
+                body.structure,
+                final_config,
+                progress=progress,
+                should_cancel=lambda: bool(jobs[job_id].get("cancel_requested")),
+            )
+            stats = final_stats
+            total_expansions += final_stats.molecules_expanded
+            total_reactions += final_stats.reactions_examined
+            total_model_calls += final_stats.model_calls
+            total_model_generated += final_stats.model_reactions_generated
+            total_model_failures += final_stats.model_failures
+            serialized_routes = [route.to_dict() for route in routes]
+            _enrich_names(serialized_routes)
+        if availability_active:
+            planning_stock = _availability_stock(body, additions, observation_ids)
+            jobs[job_id]["availability"].update(
+                status="completed",
+                rounds_completed=jobs[job_id]["progress"].get("search_epoch", 1),
+                snapshot_version=planning_stock.version,
+                verdicts=verdicts,
+            )
+        stats.elapsed_seconds = round(time.monotonic() - started, 6)
+        stats.molecules_expanded = total_expansions
+        stats.reactions_examined = total_reactions
+        stats.model_calls = total_model_calls
+        stats.model_reactions_generated = total_model_generated
+        stats.model_failures = total_model_failures
         _attach_availability(serialized_routes, verdicts)
         jobs[job_id].update(
             status="completed",
@@ -343,7 +443,7 @@ def _run(job_id: str, body: SearchInput) -> None:
                 "partial routes are shown with unresolved precursors."
             ),
         )
-        jobs[job_id]["reproducibility"]["stock_version"] = verified_stock.version
+        jobs[job_id]["reproducibility"]["stock_version"] = planning_stock.version
     except Exception as exc:
         logger.exception("Search job %s failed", job_id)
         jobs[job_id].update(status="failed", error=str(exc))
@@ -376,6 +476,8 @@ def create_search(body: SearchInput) -> dict[str, str]:
             "availability_checked": 0,
             "availability_total": 0,
             "availability_current": None,
+            "search_epoch": 0,
+            "search_epochs": body.availability_max_rounds if body.availability_enabled else 1,
         },
         "availability": {
             "enabled": body.availability_enabled,
@@ -386,6 +488,7 @@ def create_search(body: SearchInput) -> dict[str, str]:
             "candidate_listings": 0,
             "country": body.availability_country,
             "buyer_class": body.availability_buyer_class,
+            "rounds_completed": 0,
         },
         "reproducibility": {
             "opencook_version": __version__,

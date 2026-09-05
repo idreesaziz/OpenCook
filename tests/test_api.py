@@ -146,3 +146,66 @@ def test_web_search_checks_unresolved_leaves_and_attaches_evidence(monkeypatch: 
 
     unresolved = [leaf for route in result["routes"] for leaf in leaves(route["root"])]
     assert any(leaf.get("availability", {}).get("state") == "listed_in_stock" for leaf in unresolved)
+
+
+def test_verified_leaf_is_fed_back_until_route_is_complete(monkeypatch: object) -> None:
+    leaf = "CCCCCCC"
+
+    def evaluate(smiles: str, **_kwargs: object) -> dict[str, object]:
+        terminal = smiles == leaf
+        return {
+            "state": "listed_in_stock" if terminal else "unknown",
+            "terminal": terminal,
+            "confidence": 0.95 if terminal else 0.0,
+            "reasons": ["verified fixture offer" if terminal else "no offer"],
+            "observations": [
+                {
+                    "id": "verified-heptane-offer",
+                    "state": "listed_in_stock",
+                    "provider": "fixture",
+                    "upstream_source": "merchant fixture",
+                    "identity_decision": "exact",
+                    "identity_reasons": ["exact identity"],
+                    "observed_at": "2026-09-05T00:00:00Z",
+                    "expires_at": "2026-09-06T00:00:00Z",
+                    "warnings": [],
+                }
+            ] if terminal else [],
+            "provider_errors": {},
+        }
+
+    monkeypatch.setattr(api.availability_gateway, "evaluate", evaluate)  # type: ignore[attr-defined]
+    monkeypatch.setattr(api.availability_gateway, "health", lambda: {"status": "ok"})  # type: ignore[attr-defined]
+    monkeypatch.setattr(api, "stock", SetStock(["C"]))  # type: ignore[attr-defined]
+    api.store.put_reaction(
+        Reaction(
+            "purchase-directed-fixture",
+            (leaf,),
+            "CCCCCCCC",
+            EvidenceClass.EXACT,
+            1.0,
+            "checked",
+            (Provenance("test", "1", "purchase-directed", "fixture", "CC0"),),
+        )
+    )
+    created = client.post(
+        "/api/v1/searches",
+        json={
+            "structure": "CCCCCCCC",
+            "availability_enabled": True,
+            "availability_country": "US",
+            "availability_max_rounds": 2,
+            "max_depth": 4,
+        },
+    ).json()
+    for _ in range(200):
+        result = client.get(f"/api/v1/searches/{created['id']}").json()
+        if result["status"] == "completed":
+            break
+        time.sleep(0.01)
+
+    assert result["routes"][0]["complete"] is True
+    assert result["routes"][0]["root"]["precursors"][0]["in_stock"] is True
+    assert result["routes"][0]["root"]["precursors"][0]["availability"]["terminal"] is True
+    assert result["availability"]["rounds_completed"] == 2
+    assert "availability:US:ordinary_individual" in result["reproducibility"]["stock_version"]

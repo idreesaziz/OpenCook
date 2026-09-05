@@ -47,3 +47,16 @@ routes discovered, deepest complete route, and elapsed time. These are planner
 observations, not experimental evidence.
 
 The breadth-first baseline uses the same correctness machinery with a zero heuristic. Search limits include depth, molecule expansions, time, requested routes, and candidate reactions.
+
+## Purchase-directed search
+
+When real-world availability verification is enabled, OpenCook deliberately ignores the broad imported
+catalog stock as a stopping condition. It begins with an empty per-search stock overlay, expands the target
+through ORD and then the configured local model at unresolved leaves, checks the exposed leaves through
+AvailEvidence, and adds only verdicts marked `terminal=true` to that overlay. The next search epoch rebuilds
+connected routes using those verified leaves and progressively increases the allowed retrosynthetic depth.
+
+This loop is bounded by `availability_max_rounds`, the global wall-clock limit, expansion limit, model-call
+limit, and availability candidate limit. Availability observations are cached within the search, and the
+result records the exact versioned availability snapshot. A catalog mention or professional-only listing is
+shown as evidence but cannot terminate a route for an ordinary-individual search.

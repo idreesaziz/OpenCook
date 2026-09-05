@@ -42,6 +42,7 @@ export function App() {
   const [health, setHealth] = useState<Health | null>(null);
   const [availabilityEnabled, setAvailabilityEnabled] = useState(false);
   const [availabilityCountry, setAvailabilityCountry] = useState("");
+  const [availabilityRounds, setAvailabilityRounds] = useState(4);
   const [availabilityHealth, setAvailabilityHealth] = useState("unchecked");
   const [searchStartedAt, setSearchStartedAt] = useState(0);
   const [liveNow, setLiveNow] = useState(0);
@@ -70,6 +71,7 @@ export function App() {
           routes: 5,
           availability_enabled: availabilityEnabled,
           availability_country: availabilityEnabled ? availabilityCountry.toUpperCase() : null,
+          availability_max_rounds: availabilityRounds,
         }),
       });
       if (!response.ok) throw new Error((await response.json()).detail);
@@ -174,12 +176,23 @@ export function App() {
                       onChange={(event) => setAvailabilityCountry(event.target.value.toUpperCase())}
                     />
                   </label>
+                  <label className="rounds-field">
+                    EPOCHS
+                    <input
+                      type="number"
+                      min={1}
+                      max={8}
+                      value={availabilityRounds}
+                      aria-label="Maximum purchase-directed search epochs"
+                      onChange={(event) => setAvailabilityRounds(Math.max(1, Math.min(8, Number(event.target.value))))}
+                    />
+                  </label>
                   <code className={`service-state ${availabilityHealth}`}>
                     AVAIL:: {availabilityHealth}
                   </code>
                 </>
               ) : null}
-              <small>Opt-in network check. Exact identity and regional evidence are required.</small>
+              <small>Strict mode: only independently verified, region-eligible offers terminate a route. ORD and the configured model keep expanding all other leaves.</small>
             </div>
             <button className="primary" onClick={run} disabled={busy}>
               Find synthesis <span>-&gt;</span>
@@ -258,6 +271,7 @@ export function App() {
                     <ProgressGauge label="MODEL FALLBACK" value={job.progress?.model_calls ?? 0} maximum={job.configuration?.max_model_calls ?? 25} detail={`${job.progress?.model_calls ?? 0} calls · ${job.progress?.model_reactions_generated ?? 0} proposals`} />
                     <ProgressGauge label="FRONTIER LOAD" value={job.progress?.frontier_size ?? 0} maximum={Math.max(job.progress?.molecules_discovered ?? 1, 1)} detail={`${job.progress?.frontier_size ?? 0} queued`} />
                     {job.availability?.enabled ? <ProgressGauge label="AVAILABILITY EVIDENCE" value={job.progress?.availability_checked ?? 0} maximum={Math.max(job.progress?.availability_total ?? 1, 1)} detail={`${job.progress?.availability_checked ?? 0} / ${job.progress?.availability_total ?? 0} leaves`} /> : null}
+                    {job.availability?.enabled ? <ProgressGauge label="PURCHASE SEARCH EPOCH" value={job.progress?.search_epoch ?? 0} maximum={job.progress?.search_epochs ?? job.configuration?.availability_max_rounds ?? 1} detail={`${job.progress?.search_epoch ?? 0} / ${job.progress?.search_epochs ?? job.configuration?.availability_max_rounds ?? 1}`} /> : null}
                   </div>
                   <div className="progress-metrics">
                     <span>depth <strong>{job.progress?.current_depth ?? 0}</strong></span>
@@ -299,7 +313,9 @@ export function App() {
                   <div><dt>leaves checked</dt><dd>{job.availability.checked} / {job.availability.total}</dd></div>
                   <div><dt>verified terminal</dt><dd>{job.availability.verified}</dd></div>
                   <div><dt>candidate listings</dt><dd>{job.availability.candidate_listings}</dd></div>
+                  <div><dt>search epochs</dt><dd>{job.availability.rounds_completed ?? 0}</dd></div>
                 </dl>
+                {job.availability.termination ? <p>termination: {job.availability.termination.replaceAll("_", " ")}</p> : null}
                 {job.availability.snapshot_version ? <code>{job.availability.snapshot_version}</code> : null}
                 {job.availability.error ? <p className="availability-error">Service unavailable: {job.availability.error}</p> : null}
               </section>
