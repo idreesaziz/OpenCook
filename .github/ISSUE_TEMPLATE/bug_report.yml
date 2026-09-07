@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible defect in OpenCook
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve OpenCook. Do not include confidential structures or proprietary reaction records.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the observed and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Include the command/API request and a redistributable structure or fixture when possible.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: OpenCook version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, RDKit, corpus/index version, planner, and relevant configuration.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or search trace
+      render: shell

@@ -58,13 +58,12 @@ cd ../OpenCook
 uv run opencook serve
 ```
 
-The web-search job performs retrosynthesis first, collects a bounded set of every
-unique route leaf (both configured stock and unresolved), checks them through
-AvailEvidence with live progress, and attaches every verdict to the matching molecule.
-This means existing stock assumptions receive inspectable source links too. If strict
-terminal offers are verified, it
-constructs a per-search versioned stock overlay and resumes retrosynthesis. The global
-stock database is not mutated by a web query.
+In strict availability mode, the web-search job does not trust the broad imported stock
+as proof of purchase. It starts with an empty per-search stock overlay, expands through
+ORD and the configured model, checks newly exposed route leaves through AvailEvidence,
+and adds only strict terminal verdicts. Successive bounded epochs rebuild the connected
+route and progressively deepen unresolved branches. Every verdict and source link is
+attached to its molecule. The global stock database is not mutated by a web query.
 
 Docker users with both sibling repositories can run the optional service profile:
 

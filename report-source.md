@@ -299,8 +299,7 @@ The Python SDK should expose one protocol that OpenCook can depend on:
 ```python
 class AvailabilityProvider(Protocol):
     def evaluate(
-        self, identity: ProductIdentity, buyer: BuyerProfile,
-        market: Market, policy: AvailabilityPolicy
+        self, identity: ProductIdentity, buyer: BuyerProfile, market: Market, policy: AvailabilityPolicy
     ) -> AvailabilityVerdict: ...
 ```
 

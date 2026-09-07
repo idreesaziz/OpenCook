@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose a focused scientific or engineering improvement
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Scientific use case
+      description: What workflow or limitation would this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: References or prior implementations
+      description: Link papers, benchmarks, schemas, or permissively licensed projects where relevant.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Chemistry and normalization
+        - Reaction data and indexing
+        - Search and scoring
+        - Stock and availability
+        - API and CLI
+        - Web interface
+        - Documentation
+    validations:
+      required: true

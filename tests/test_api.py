@@ -170,7 +170,9 @@ def test_verified_leaf_is_fed_back_until_route_is_complete(monkeypatch: object) 
                     "expires_at": "2026-09-06T00:00:00Z",
                     "warnings": [],
                 }
-            ] if terminal else [],
+            ]
+            if terminal
+            else [],
             "provider_errors": {},
         }
 

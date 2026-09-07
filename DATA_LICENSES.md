@@ -4,10 +4,10 @@
 
 RetroChimera code and checkpoints are not bundled with OpenCook. Users download them separately and must
 review upstream code, checkpoint, and training-data terms. A checkpoint trained on a commercial corpus must
-not be assumed to inherit OpenCook's Apache-2.0 source license. Generated reactions remain computational
+not be assumed to inherit OpenCook's MIT source license. Generated reactions remain computational
 proposals, not experimental evidence.
 
-OpenCook source code is Apache-2.0. That license does not apply to reaction datasets, generated indexes containing dataset-derived material, commercial catalogs, or user-provided data.
+OpenCook source code is MIT. That license does not apply to reaction datasets, generated indexes containing dataset-derived material, commercial catalogs, or user-provided data.
 
 | Data | Bundled | License | Notes |
 |---|---:|---|---|

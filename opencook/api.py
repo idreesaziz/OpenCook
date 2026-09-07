@@ -194,9 +194,7 @@ def _check_new_leaves(
     assert body.availability_country is not None
     remaining = body.availability_candidate_limit - len(verdicts)
     leaves = [
-        leaf
-        for leaf in _availability_leaves(serialized_routes)
-        if str(leaf["molecule"]) not in verdicts
+        leaf for leaf in _availability_leaves(serialized_routes) if str(leaf["molecule"]) not in verdicts
     ][:remaining]
     jobs[job_id]["availability"]["total"] = len(verdicts) + len(leaves)
     verified_before = len(additions)
@@ -241,9 +239,7 @@ def _check_new_leaves(
         jobs[job_id]["availability"].update(
             checked=len(verdicts),
             verified=len(additions),
-            candidate_listings=(
-                jobs[job_id]["availability"]["candidate_listings"] + candidate_count
-            ),
+            candidate_listings=(jobs[job_id]["availability"]["candidate_listings"] + candidate_count),
         )
     return len(additions) - verified_before
 
@@ -283,9 +279,7 @@ def _run(job_id: str, body: SearchInput) -> None:
         def progress(update: dict[str, object]) -> None:
             cumulative = dict(update)
             cumulative["elapsed_seconds"] = round(time.monotonic() - started, 3)
-            cumulative["molecules_expanded"] = total_expansions + int(
-                update.get("molecules_expanded", 0)
-            )
+            cumulative["molecules_expanded"] = total_expansions + int(update.get("molecules_expanded", 0))
             cumulative["unique_reactions_examined"] = total_reactions + int(
                 update.get("unique_reactions_examined", 0)
             )
@@ -293,9 +287,7 @@ def _run(job_id: str, body: SearchInput) -> None:
             cumulative["model_reactions_generated"] = total_model_generated + int(
                 update.get("model_reactions_generated", 0)
             )
-            cumulative["model_failures"] = total_model_failures + int(
-                update.get("model_failures", 0)
-            )
+            cumulative["model_failures"] = total_model_failures + int(update.get("model_failures", 0))
             jobs[job_id]["progress"] = {**jobs[job_id]["progress"], **cumulative}
 
         availability_active = body.availability_enabled and body.availability_country is not None
